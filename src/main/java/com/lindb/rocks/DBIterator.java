@@ -1,0 +1,253 @@
+package com.lindb.rocks;
+
+import com.google.common.base.Preconditions;
+import com.google.common.primitives.Ints;
+import com.lindb.rocks.table.*;
+import com.lindb.rocks.table.MemTable.MemTableIterator;
+
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.NoSuchElementException;
+
+public final class DBIterator extends AbstractSeekingIterator<InternalKey, byte[]> implements InternalIterator {
+    /*
+     * NOTE: This code has been specifically tuned for performance of the DB
+     * iterator methods.  Before committing changes to this code, make sure
+     * that the performance of the DB benchmark with the following parameters
+     * has not regressed:
+     *
+     *    --num=10000000 --benchmarks=fillseq,readrandom,readseq,readseq,readseq
+     *
+     * The code in this class purposely does not use the SeekingIterator
+     * interface, but instead used the concrete implementations.  This is
+     * because we want the hot spot compiler to inline the code from the
+     * concrete iterators, and this can not happen with truly polymorphic
+     * call-sites.  If a future version of hot spot supports inlining of truly
+     * polymorphic call-sites, this code can be made much simpler.
+     */
+    private final MemTableIterator memTableIterator;
+    private final MemTableIterator immutableMemTableIterator;
+    private final List<InternalTableIterator> level0Files;
+    private final List<LevelIterator> levels;
+
+    private final Comparator<InternalKey> comparator;
+
+    private final ComparableIterator[] heap;
+    private int heapSize;
+
+    public DBIterator(MemTableIterator memTableIterator,
+                      MemTableIterator immutableMemTableIterator,
+                      List<InternalTableIterator> level0Files,
+                      List<LevelIterator> levels,
+                      Comparator<InternalKey> comparator) {
+        this.memTableIterator = memTableIterator;
+        this.immutableMemTableIterator = immutableMemTableIterator;
+        this.level0Files = level0Files;
+        this.levels = levels;
+        this.comparator = comparator;
+
+        this.heap = new ComparableIterator[3 + level0Files.size() + levels.size()];
+        resetPriorityQueue();
+    }
+
+    @Override
+    protected void seekToFirstInternal() {
+        if (memTableIterator != null) {
+            memTableIterator.seekToFirst();
+        }
+        if (immutableMemTableIterator != null) {
+            immutableMemTableIterator.seekToFirst();
+        }
+        for (InternalTableIterator level0File : level0Files) {
+            level0File.seekToFirst();
+        }
+        for (LevelIterator level : levels) {
+            level.seekToFirst();
+        }
+        resetPriorityQueue();
+    }
+
+    @Override
+    protected void seekInternal(InternalKey targetKey) {
+        if (memTableIterator != null) {
+            memTableIterator.seek(targetKey);
+        }
+        if (immutableMemTableIterator != null) {
+            immutableMemTableIterator.seek(targetKey);
+        }
+        for (InternalTableIterator level0File : level0Files) {
+            level0File.seek(targetKey);
+        }
+        for (LevelIterator level : levels) {
+            level.seek(targetKey);
+        }
+        resetPriorityQueue();
+    }
+
+    @Override
+    protected Entry<InternalKey, byte[]> getNextEntry() {
+        if (heapSize == 0) {
+            return null;
+        }
+
+        ComparableIterator smallest = heap[0];
+        Entry<InternalKey, byte[]> result = smallest.next();
+
+        // if the smallest iterator has more elements, put it back in the heap,
+        // otherwise use the last element in the queue
+        ComparableIterator replacementElement;
+        if (smallest.hasNext()) {
+            replacementElement = smallest;
+        } else {
+            heapSize--;
+            replacementElement = heap[heapSize];
+            heap[heapSize] = null;
+        }
+
+        if (replacementElement != null) {
+            heap[0] = replacementElement;
+            heapSiftDown(0);
+        }
+
+        return result;
+    }
+
+    private void resetPriorityQueue() {
+        int i = 0;
+        heapSize = 0;
+        if (memTableIterator != null && memTableIterator.hasNext()) {
+            heapAdd(new ComparableIterator(memTableIterator, comparator, i++, memTableIterator.next()));
+        }
+        if (immutableMemTableIterator != null && immutableMemTableIterator.hasNext()) {
+            heapAdd(new ComparableIterator(immutableMemTableIterator, comparator, i++, immutableMemTableIterator.next()));
+        }
+        for (InternalTableIterator level0File : level0Files) {
+            if (level0File.hasNext()) {
+                heapAdd(new ComparableIterator(level0File, comparator, i++, level0File.next()));
+            }
+        }
+        for (LevelIterator level : levels) {
+            if (level.hasNext()) {
+                heapAdd(new ComparableIterator(level, comparator, i++, level.next()));
+            }
+        }
+    }
+
+    private boolean heapAdd(ComparableIterator newElement) {
+        Preconditions.checkNotNull(newElement, "newElement is null");
+
+        heap[heapSize] = newElement;
+        heapSiftUp(heapSize++);
+        return true;
+    }
+
+    private void heapSiftUp(int childIndex) {
+        ComparableIterator target = heap[childIndex];
+        int parentIndex;
+        while (childIndex > 0) {
+            parentIndex = (childIndex - 1) / 2;
+            ComparableIterator parent = heap[parentIndex];
+            if (parent.compareTo(target) <= 0) {
+                break;
+            }
+            heap[childIndex] = parent;
+            childIndex = parentIndex;
+        }
+        heap[childIndex] = target;
+    }
+
+    private void heapSiftDown(int rootIndex) {
+        ComparableIterator target = heap[rootIndex];
+        int childIndex;
+        while ((childIndex = rootIndex * 2 + 1) < heapSize) {
+            if (childIndex + 1 < heapSize
+                    && heap[childIndex + 1].compareTo(heap[childIndex]) < 0) {
+                childIndex++;
+            }
+            if (target.compareTo(heap[childIndex]) <= 0) {
+                break;
+            }
+            heap[rootIndex] = heap[childIndex];
+            rootIndex = childIndex;
+        }
+        heap[rootIndex] = target;
+    }
+
+    private static class ComparableIterator  implements Iterator<Entry<InternalKey, byte[]>>, Comparable<ComparableIterator> {
+        private final SeekingIterator<InternalKey, byte[]> iterator;
+        private final Comparator<InternalKey> comparator;
+        private final int ordinal;
+        private Entry<InternalKey, byte[]> nextElement;
+
+        private ComparableIterator(SeekingIterator<InternalKey, byte[]> iterator, Comparator<InternalKey> comparator, int ordinal, Entry<InternalKey, byte[]> nextElement) {
+            this.iterator = iterator;
+            this.comparator = comparator;
+            this.ordinal = ordinal;
+            this.nextElement = nextElement;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return nextElement != null;
+        }
+
+        @Override
+        public Entry<InternalKey, byte[]> next() {
+            if (nextElement == null) {
+                throw new NoSuchElementException();
+            }
+
+            Entry<InternalKey, byte[]> result = nextElement;
+            if (iterator.hasNext()) {
+                nextElement = iterator.next();
+            } else {
+                nextElement = null;
+            }
+            return result;
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+
+            ComparableIterator comparableIterator = (ComparableIterator) o;
+
+            if (ordinal != comparableIterator.ordinal) {
+                return false;
+            }
+            if (nextElement != null ? !nextElement.equals(comparableIterator.nextElement) : comparableIterator.nextElement != null) {
+                return false;
+            }
+
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = ordinal;
+            result = 31 * result + (nextElement != null ? nextElement.hashCode() : 0);
+            return result;
+        }
+
+        @Override
+        public int compareTo(ComparableIterator that) {
+            int result = comparator.compare(this.nextElement.getKey(), that.nextElement.getKey());
+            if (result == 0) {
+                result = Ints.compare(this.ordinal, that.ordinal);
+            }
+            return result;
+        }
+    }
+}
