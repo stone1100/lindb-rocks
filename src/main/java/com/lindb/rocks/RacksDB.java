@@ -65,18 +65,11 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
 
         this.options = options;
         if (this.options.compressionType() == CompressionType.SNAPPY && !Snappy.available()) {
-            //Disable snappy if it's not avaliable
+            //Disable snappy if it's not available
             this.options.compressionType(CompressionType.NONE);
         }
 
-        DBComparator comparator = this.options.comparator();
-        UserComparator userComparator;
-        if (comparator != null) {
-            userComparator = new CustomUserComparator(comparator);
-        } else {
-            userComparator = new ByteArrayComparator();
-        }
-        internalKeyComparator = new InternalKeyComparator(userComparator);
+        internalKeyComparator = new InternalKeyComparator(new ByteArrayComparator());
         memTable = new MemTable(internalKeyComparator);
 
 

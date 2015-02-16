@@ -86,9 +86,6 @@ public class TableBuilder {
     }
 
     public void add(byte[] key, byte[] value) throws IOException {
-        Preconditions.checkNotNull(key, "key is null");
-        Preconditions.checkNotNull(value, "value is null");
-
         Preconditions.checkState(!closed, "table is finished");
 
         if (entryCount > 0) {

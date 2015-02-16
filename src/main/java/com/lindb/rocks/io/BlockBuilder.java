@@ -11,7 +11,7 @@ import static com.lindb.rocks.util.Bytes.SIZEOF_INT;
 
 /**
  * Block is sstable:
- * |block entry 1|block entry 2|....|block entry N|restart positions(int*count of restart)|count of restart|trailer(compression type+crc32)
+ * block entry 1|block entry 2|....|block entry N|restart positions(int*count of restart)|count of restart|trailer(compression type+crc32)
  * <p/>
  * Restart point must be start with 0
  */
@@ -28,9 +28,7 @@ public class BlockBuilder {
     private byte[] lastKey;
 
     public BlockBuilder(int estimatedSize, int blockRestartInterval, Comparator<byte[]> comparator) {
-        Preconditions.checkArgument(estimatedSize >= 0, "estimatedSize is negative");
         Preconditions.checkArgument(blockRestartInterval >= 0, "blockRestartInterval is negative");
-        Preconditions.checkNotNull(comparator, "comparator is null");
 
         this.block = ByteBuffer.allocate(estimatedSize);
         this.blockRestartInterval = blockRestartInterval;

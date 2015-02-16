@@ -22,7 +22,6 @@ public class Options {
     private CompressionType compressionType = CompressionType.SNAPPY;
     private boolean verifyChecksums = true;
     private boolean paranoidChecks;
-    private DBComparator comparator;
     private long cacheSize;
 
 
@@ -111,15 +110,6 @@ public class Options {
 
     public Options cacheSize(long cacheSize) {
         this.cacheSize = cacheSize;
-        return this;
-    }
-
-    public DBComparator comparator() {
-        return comparator;
-    }
-
-    public Options comparator(DBComparator comparator) {
-        this.comparator = comparator;
         return this;
     }
 

@@ -36,11 +36,9 @@ public class MMapTable implements SeekingIterable<byte[], byte[]> {
     private MappedByteBuffer data;
 
     public MMapTable(FileChannel fileChannel, Comparator<byte[]> comparator, boolean verifyChecksums) throws IOException {
-        Preconditions.checkNotNull(fileChannel, "fileChannel is null");
         long size = fileChannel.size();
         Preconditions.checkArgument(size >= Footer.FOOTER_ENCODED_LENGTH, "File is corrupt: size must be at least %s bytes", Footer.FOOTER_ENCODED_LENGTH);
         Preconditions.checkArgument(size <= Integer.MAX_VALUE, "File must be smaller than %s bytes", Integer.MAX_VALUE);
-        Preconditions.checkNotNull(comparator, "comparator is null");
 
         this.fileChannel = fileChannel;
         this.verifyChecksums = verifyChecksums;

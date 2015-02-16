@@ -6,4 +6,15 @@ package com.lindb.rocks.io;
  */
 public enum BlockType {
 
+    DATA((byte) 1);
+
+    private final byte code;
+
+    BlockType(byte code) {
+        this.code = code;
+    }
+
+    public byte code() {
+        return code;
+    }
 }
