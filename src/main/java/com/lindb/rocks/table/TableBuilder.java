@@ -68,11 +68,10 @@ public class TableBuilder {
         blockSize = options.blockSize();
         compressionType = options.compressionType();
 
-        dataBlockBuilder = new BlockBuilder((int) Math.min(blockSize * 1.1, VersionSet.TARGET_FILE_SIZE), blockRestartInterval, userComparator);
+        dataBlockBuilder = new BlockBuilder(blockRestartInterval, userComparator);
 
         // with expected 50% compression
-        int expectedNumberOfBlocks = 1024;
-        indexBlockBuilder = new BlockBuilder(BlockMeta.BLOCK_META_ENCODED_LENGTH * expectedNumberOfBlocks, 1, userComparator);
+        indexBlockBuilder = new BlockBuilder(1, userComparator);
 
         lastKey = DBConstants.EMPTY_BYTE_ARRAY;
     }
@@ -151,7 +150,7 @@ public class TableBuilder {
         BlockTrailer blockTrailer = new BlockTrailer(blockCompressionType, crc32c(blockContents, blockCompressionType));
 
         // create a meta to this block
-        BlockMeta blockMeta =  new BlockMeta(position, blockContents.limit());
+        BlockMeta blockMeta = new BlockMeta(position, blockContents.limit());
 
         // write data and trailer
         position += fileChannel.write(new ByteBuffer[]{blockContents, blockTrailer.encode()});
@@ -196,7 +195,7 @@ public class TableBuilder {
         closed = true;
 
         // write (empty) meta index block
-        BlockBuilder metaIndexBlockBuilder = new BlockBuilder(256, blockRestartInterval, new ByteArrayComparator());
+        BlockBuilder metaIndexBlockBuilder = new BlockBuilder(blockRestartInterval, new ByteArrayComparator());
 
         BlockMeta metaIndexBlockMeta = writeBlock(metaIndexBlockBuilder);
 
@@ -221,17 +220,17 @@ public class TableBuilder {
         closed = true;
     }
 
-    public static int crc32c(ByteBuffer data, CompressionType type) {
-        PureJavaCrc32C crc32c = new PureJavaCrc32C();
-        crc32c.update(data.array(), data.position(), data.remaining());
-        crc32c.update(type.code() & 0xFF);
-        return crc32c.getMaskedValue();
-    }
-
     public void ensureCompressedOutputCapacity(int capacity) {
         if (compressedOutput != null && compressedOutput.length > capacity) {
             return;
         }
         compressedOutput = new byte[capacity];
+    }
+
+    private static int crc32c(ByteBuffer data, CompressionType type) {
+        PureJavaCrc32C crc32c = new PureJavaCrc32C();
+        crc32c.update(data.array(), data.position(), data.remaining());
+        crc32c.update(type.code() & 0xFF);
+        return crc32c.getMaskedValue();
     }
 }

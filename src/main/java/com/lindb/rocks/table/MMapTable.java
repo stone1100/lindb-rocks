@@ -1,8 +1,8 @@
 package com.lindb.rocks.table;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Throwables;
 import com.lindb.rocks.CompressionType;
+import com.lindb.rocks.RacksDBException;
 import com.lindb.rocks.io.*;
 import com.lindb.rocks.util.ByteBufferSupport;
 import com.lindb.rocks.util.CloseableUtil;
@@ -61,26 +61,31 @@ public class MMapTable implements SeekingIterable<byte[], byte[]> {
     protected Block readBlock(BlockMeta blockMeta) throws IOException {
         // read block trailer
         data.position((int) blockMeta.getOffset() + blockMeta.getDataSize());
-        data.mark();
         int oldLimit = data.limit();
         data.limit((int) blockMeta.getOffset() + blockMeta.getDataSize() + BLOCK_TRAILER_ENCODED_LENGTH);
         BlockTrailer blockTrailer = BlockTrailer.readBlockTrailer(data.slice());
         //reset position and limit
-        data.reset();
         data.limit(oldLimit);
+
+        data.position((int) blockMeta.getOffset());
+        byte[] blockData = new byte[blockMeta.getDataSize()];
+        data.get(blockData);
 
         // only verify check sums if explicitly asked by the user
         if (verifyChecksums) {
             // checksum data and the compression type in the trailer
             PureJavaCrc32C checksum = new PureJavaCrc32C();
-            checksum.update(data.array(), data.position(), blockMeta.getDataSize() + 1);
+            checksum.update(blockData, 0, blockData.length);
+            checksum.update(data.get() & 0xFF);
             int actualCrc32c = checksum.getMaskedValue();
 
             Preconditions.checkState(blockTrailer.getCrc32c() == actualCrc32c, "Block corrupted: checksum mismatch");
         }
 
         // decompress data
-        ByteBuffer uncompressedBuffer = read(blockMeta);
+        ByteBuffer uncompressedBuffer = ByteBuffer.allocateDirect(blockData.length);
+        uncompressedBuffer.put(blockData);
+        uncompressedBuffer.flip();
         if (blockTrailer.getCompressionType() == CompressionType.SNAPPY) {
             synchronized (MMapTable.class) {
                 int uncompressedLength = uncompressedLength(uncompressedBuffer);
@@ -95,7 +100,7 @@ public class MMapTable implements SeekingIterable<byte[], byte[]> {
             }
         }
 
-        return new Block(uncompressedBuffer.slice(), comparator);
+        return new Block(uncompressedBuffer, comparator);
     }
 
     private ByteBuffer read(BlockMeta blockMeta) throws IOException {
@@ -103,13 +108,12 @@ public class MMapTable implements SeekingIterable<byte[], byte[]> {
         return (ByteBuffer) data.duplicate().order(ByteOrder.LITTLE_ENDIAN).clear().limit(newPosition + blockMeta.getDataSize()).position(newPosition);
     }
 
-    public Block openBlock(byte[] blockMetaData) {
-        BlockMeta blockMeta = BlockMeta.readBlockMeta(blockMetaData);
+    public Block openBlock(BlockMeta blockMeta) {
         Block dataBlock;
         try {
             dataBlock = readBlock(blockMeta);
         } catch (IOException e) {
-            throw Throwables.propagate(e);
+            throw new RacksDBException("Read block error: ", e);
         }
         return dataBlock;
     }

@@ -1,6 +1,7 @@
 package com.lindb.rocks.io;
 
 import com.google.common.base.Preconditions;
+import com.lindb.rocks.util.ByteArrayStream;
 import com.lindb.rocks.util.Bytes;
 import com.lindb.rocks.util.IntVector;
 
@@ -19,18 +20,17 @@ public class BlockBuilder {
     private final int blockRestartInterval;
     private final IntVector restartPositions;
     private final Comparator<byte[]> comparator;
-    private final ByteBuffer block;
-
+    private final ByteArrayStream block;
     private int entryCount;
     private int restartBlockEntryCount;
 
     private boolean finished;
     private byte[] lastKey;
 
-    public BlockBuilder(int estimatedSize, int blockRestartInterval, Comparator<byte[]> comparator) {
+    public BlockBuilder(int blockRestartInterval, Comparator<byte[]> comparator) {
         Preconditions.checkArgument(blockRestartInterval >= 0, "blockRestartInterval is negative");
 
-        this.block = ByteBuffer.allocate(estimatedSize);
+        this.block = new ByteArrayStream();
         this.blockRestartInterval = blockRestartInterval;
         this.comparator = comparator;
 
@@ -39,7 +39,7 @@ public class BlockBuilder {
     }
 
     public void reset() {
-        block.clear();
+        block.reset();
         entryCount = 0;
         restartPositions.clear();
         restartPositions.add(0); // first restart point must be 0
@@ -55,15 +55,15 @@ public class BlockBuilder {
     public int currentSizeEstimate() {
         // no need to estimate if closed
         if (finished) {
-            return block.remaining();
+            return block.size();
         }
 
         // no records is just a single int
-        if (block.position() == 0) {
+        if (block.size() == 0) {
             return SIZEOF_INT;
         }
         //raw data size + restart position count+ pre restart position*count
-        return block.position() + SIZEOF_INT + SIZEOF_INT * restartPositions.size();
+        return block.size() + SIZEOF_INT + SIZEOF_INT * restartPositions.size();
     }
 
     public void add(byte[] key, byte[] value) {
@@ -76,22 +76,22 @@ public class BlockBuilder {
             sharedKeyBytes = Bytes.calculateSharedBytes(key, lastKey);
         } else {
             // restart prefix compression
-            restartPositions.add(block.position());
+            restartPositions.add(block.size());
             restartBlockEntryCount = 0;
         }
 
         int nonSharedKeyBytes = key.length - sharedKeyBytes;
 
         // write "<shared><non_shared><value_size>"
-        block.putInt(sharedKeyBytes);
-        block.putInt(nonSharedKeyBytes);
-        block.putInt(value.length);
+        block.write(sharedKeyBytes);
+        block.write(nonSharedKeyBytes);
+        block.write(value.length);
 
         // write non-shared key bytes
-        block.put(key, sharedKeyBytes, nonSharedKeyBytes);
+        block.write(key, sharedKeyBytes, nonSharedKeyBytes);
 
         // write value bytes
-        block.put(value);
+        block.write(value);
 
         // update last key
         lastKey = key;
@@ -106,11 +106,11 @@ public class BlockBuilder {
             finished = true;
             if (entryCount > 0) {
                 restartPositions.write(block);
-                block.putInt(restartPositions.size());
+                block.write(restartPositions.size());
             } else {
-                block.putInt(0);
+                block.write(0);
             }
         }
-        return (ByteBuffer) block.flip();
+        return ByteBuffer.wrap(block.getBuf(), 0, block.size());
     }
 }

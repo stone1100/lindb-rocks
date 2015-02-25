@@ -40,9 +40,9 @@ public class IntVector {
         values = Arrays.copyOf(values, newLength);
     }
 
-    public void write(ByteBuffer out) {
+    public void write(ByteArrayStream out) {
         for (int index = 0; index < size; index++) {
-            out.putInt(values[index]);
+            out.write(values[index]);
         }
     }
 }

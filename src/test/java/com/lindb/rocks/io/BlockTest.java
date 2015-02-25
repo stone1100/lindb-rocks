@@ -68,7 +68,7 @@ public class BlockTest {
     }
 
     private static void blockTest(int blockRestartInterval, List<BlockEntry> entries) {
-        BlockBuilder builder = new BlockBuilder(512, blockRestartInterval, new ByteArrayComparator());
+        BlockBuilder builder = new BlockBuilder(blockRestartInterval, new ByteArrayComparator());
 
         for (BlockEntry entry : entries) {
             builder.add(entry.getKey(), entry.getValue());

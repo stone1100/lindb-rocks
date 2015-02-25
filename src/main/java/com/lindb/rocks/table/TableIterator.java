@@ -2,6 +2,7 @@ package com.lindb.rocks.table;
 
 import com.lindb.rocks.io.Block;
 import com.lindb.rocks.io.BlockIterator;
+import com.lindb.rocks.io.BlockMeta;
 
 import java.util.Map.Entry;
 
@@ -68,7 +69,8 @@ public final class TableIterator extends AbstractSeekingIterator<byte[], byte[]>
     }
 
     private BlockIterator getNextBlock() {
-        byte[] blockMeta = dataBlockIndexIterator.next().getValue();
+        byte[] blockMetaRaw = dataBlockIndexIterator.next().getValue();
+        BlockMeta blockMeta = BlockMeta.readBlockMeta(blockMetaRaw);
         Block dataBlock = table.openBlock(blockMeta);
         return dataBlock.iterator();
     }
