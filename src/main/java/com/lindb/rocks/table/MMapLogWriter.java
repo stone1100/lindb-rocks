@@ -185,6 +185,7 @@ public class MMapLogWriter {
         header.putShort((short) record.remaining());
         header.put(type.code());
 
+        header.flip();
         return header;
     }
 }

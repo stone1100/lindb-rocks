@@ -63,6 +63,7 @@ public class LogReader {
                         // simply return this full block
                     }
                     recordScratch.clear();
+//                    currentChunk.flip();
                     return currentChunk;
 
                 case FIRST:
@@ -94,6 +95,7 @@ public class LogReader {
                         recordScratch.clear();
                     } else {
                         recordScratch.put(currentChunk);
+                        recordScratch.flip();
                         return recordScratch.slice();
                     }
                     break;
@@ -227,6 +229,7 @@ public class LogReader {
             }
 
         }
+        blockScratch.flip();
         currentBlock = blockScratch.slice();
         return currentBlock.hasRemaining();
     }

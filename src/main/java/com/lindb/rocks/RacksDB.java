@@ -1119,14 +1119,14 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
             @Override
             public void put(byte[] key, byte[] value) {
                 record.put(VALUE.code());
-                record.put(key);
-                record.put(value);
+                Bytes.writeLengthPrefixedBytes(record, key);
+                Bytes.writeLengthPrefixedBytes(record, value);
             }
 
             @Override
             public void delete(byte[] key) {
                 record.put(DELETION.code());
-                record.put(key);
+                Bytes.writeLengthPrefixedBytes(record, key);
             }
         });
         return (ByteBuffer) record.flip();

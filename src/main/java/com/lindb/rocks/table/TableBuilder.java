@@ -97,7 +97,6 @@ public class TableBuilder {
             Preconditions.checkState(dataBlockBuilder.isEmpty(), "Internal error: Table has a pending index entry but data block builder is empty");
 
             byte[] shortestSeparator = userComparator.findShortestSeparator(lastKey, key);
-            System.out.println(Bytes.toString(shortestSeparator) + "==" + pendingDataBlockIndex.getOffset() + "," + pendingDataBlockIndex.getDataSize());
             indexBlockBuilder.add(shortestSeparator, pendingDataBlockIndex.encode().array());
             pendingIndexEntry = false;
         }

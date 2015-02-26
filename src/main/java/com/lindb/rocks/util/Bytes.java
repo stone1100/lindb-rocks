@@ -410,6 +410,11 @@ public class Bytes {
         return l;
     }
 
+    public static void writeLengthPrefixedBytes(ByteBuffer output, byte[] value) {
+        output.putInt(value.length);
+        output.put(value);
+    }
+
     /**
      * Get the encoded length if an integer is stored in a variable-length format
      *

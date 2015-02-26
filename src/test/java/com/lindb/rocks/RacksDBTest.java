@@ -1,5 +1,6 @@
 package com.lindb.rocks;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -40,7 +41,6 @@ public class RacksDBTest {
     @Test
     public void testBackgroundCompaction()
             throws Exception {
-        long start = System.currentTimeMillis();
         Options options = new Options();
         options.maxOpenFiles(100);
         options.createIfMissing(true);
@@ -53,13 +53,12 @@ public class RacksDBTest {
                 System.out.println(i + " rows written");
             }
         }
-        System.out.println(System.currentTimeMillis() - start);
     }
 
-//    @After
-//    public void tearDown() throws Exception {
-//        databaseFile.deleteOnExit();
-//    }
+    @After
+    public void tearDown() throws Exception {
+        databaseFile.deleteOnExit();
+    }
 
     private static String randomString(Random random, int length) {
         char[] chars = new char[length];
@@ -67,12 +66,6 @@ public class RacksDBTest {
             chars[i] = (char) ((int) ' ' + random.nextInt(95));
         }
         return new String(chars);
-
     }
-
-    static byte[] toByteArray(String value) {
-        return value.getBytes(UTF_8);
-    }
-
 
 }
