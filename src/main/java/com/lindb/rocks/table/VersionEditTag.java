@@ -1,6 +1,6 @@
 package com.lindb.rocks.table;
 
-import com.google.common.base.Charsets;
+import com.lindb.rocks.util.Bytes;
 
 import java.nio.ByteBuffer;
 import java.util.Map.Entry;
@@ -11,9 +11,7 @@ public enum VersionEditTag {
     COMPARATOR(1) {
         @Override
         public void readValue(ByteBuffer input, VersionEdit versionEdit) {
-            byte[] bytes = new byte[input.getInt()];
-            input.get(bytes);
-            versionEdit.setComparatorName(new String(bytes, Charsets.UTF_8));
+            versionEdit.setComparatorName(Bytes.toString(Bytes.readLengthPrefixedBytes(input)));
         }
 
         @Override
@@ -21,9 +19,7 @@ public enum VersionEditTag {
             String comparatorName = versionEdit.getComparatorName();
             if (comparatorName != null) {
                 output.putInt(getPersistentId());
-                byte[] bytes = comparatorName.getBytes(Charsets.UTF_8);
-                output.putInt(bytes.length);
-                output.put(bytes);
+                Bytes.writeLengthPrefixedBytes(output, Bytes.toBytes(comparatorName));
             }
         }
     },
@@ -98,9 +94,7 @@ public enum VersionEditTag {
             int level = input.getInt();
 
             // internal key
-            byte[] data = new byte[input.getInt()];
-            input.get(data);
-            InternalKey internalKey = new InternalKey(data);
+            InternalKey internalKey = new InternalKey(Bytes.readLengthPrefixedBytes(input));
 
             versionEdit.setCompactPointer(level, internalKey);
         }
@@ -114,9 +108,7 @@ public enum VersionEditTag {
                 output.putInt(entry.getKey());
 
                 // internal key
-                byte[] data = entry.getValue().encode();
-                output.putInt(data.length);
-                output.put(data);
+                Bytes.writeLengthPrefixedBytes(output, entry.getValue().encode());
             }
         }
     },
@@ -160,14 +152,10 @@ public enum VersionEditTag {
             long fileSize = input.getLong();
 
             // smallest key
-            byte[] smallest = new byte[input.getInt()];
-            input.get(smallest);
-            InternalKey smallestKey = new InternalKey(smallest);
+            InternalKey smallestKey = new InternalKey(Bytes.readLengthPrefixedBytes(input));
 
             // largest key
-            byte[] largest = new byte[input.getInt()];
-            input.get(largest);
-            InternalKey largestKey = new InternalKey(largest);
+            InternalKey largestKey = new InternalKey(Bytes.readLengthPrefixedBytes(input));
 
             versionEdit.addFile(level, fileNumber, fileSize, smallestKey, largestKey);
         }
@@ -188,14 +176,10 @@ public enum VersionEditTag {
                 output.putLong(fileMetaData.getFileSize());
 
                 // smallest key
-                byte[] smallest = fileMetaData.getSmallest().encode();
-                output.putInt(smallest.length);
-                output.put(smallest);
+                Bytes.writeLengthPrefixedBytes(output, fileMetaData.getSmallest().encode());
 
                 // largest key
-                byte[] largest = fileMetaData.getLargest().encode();
-                output.putInt(largest.length);
-                output.put(largest);
+                Bytes.writeLengthPrefixedBytes(output, fileMetaData.getLargest().encode());
             }
         }
     };
