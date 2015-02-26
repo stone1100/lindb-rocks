@@ -91,7 +91,7 @@ public class BlockIterator implements SeekingIterator<byte[], byte[]> {
             nextEntry = null;
         } else {
             // read entry at current data position
-            nextEntry = readEntry(data, nextEntry.getKey());
+            nextEntry = readEntry(nextEntry.getKey());
         }
         return entry;
     }
@@ -115,7 +115,7 @@ public class BlockIterator implements SeekingIterator<byte[], byte[]> {
         nextEntry = null;
 
         // read the entry
-        nextEntry = readEntry(data, null);
+        nextEntry = readEntry(null);
     }
 
     /**
@@ -125,14 +125,12 @@ public class BlockIterator implements SeekingIterator<byte[], byte[]> {
      *
      * @return true if an entry was read
      */
-    private static BlockEntry readEntry(ByteBuffer data, byte[] previousKey) {
+    private BlockEntry readEntry(byte[] previousKey) {
         Preconditions.checkNotNull(data, "data is null");
-
         // read entry header
         int sharedKeyLength = data.getInt();
         int nonSharedKeyLength = data.getInt();
         int valueLength = data.getInt();
-
         // read key
         byte[] key = new byte[sharedKeyLength + nonSharedKeyLength];
         if (sharedKeyLength > 0) {

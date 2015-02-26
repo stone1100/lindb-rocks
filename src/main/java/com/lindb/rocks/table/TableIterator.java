@@ -71,6 +71,7 @@ public final class TableIterator extends AbstractSeekingIterator<byte[], byte[]>
     private BlockIterator getNextBlock() {
         byte[] blockMetaRaw = dataBlockIndexIterator.next().getValue();
         BlockMeta blockMeta = BlockMeta.readBlockMeta(blockMetaRaw);
+        System.out.println("M:"+blockMeta.getOffset()+","+blockMeta.getDataSize());
         Block dataBlock = table.openBlock(blockMeta);
         return dataBlock.iterator();
     }

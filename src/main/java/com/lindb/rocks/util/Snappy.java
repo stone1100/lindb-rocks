@@ -11,16 +11,8 @@ public final class Snappy {
         int uncompress(ByteBuffer compressed, ByteBuffer uncompressed)
                 throws IOException;
 
-        int uncompress(byte[] input, int inputOffset, int length, byte[] output, int outputOffset)
-                throws IOException;
-
         int compress(byte[] input, int inputOffset, int length, byte[] output, int outputOffset)
                 throws IOException;
-
-        byte[] compress(String text)
-                throws IOException;
-
-        int maxCompressedLength(int length);
     }
 
     public static class XerialSnappy
@@ -41,26 +33,9 @@ public final class Snappy {
         }
 
         @Override
-        public int uncompress(byte[] input, int inputOffset, int length, byte[] output, int outputOffset)
-                throws IOException {
-            return org.xerial.snappy.Snappy.uncompress(input, inputOffset, length, output, outputOffset);
-        }
-
-        @Override
         public int compress(byte[] input, int inputOffset, int length, byte[] output, int outputOffset)
                 throws IOException {
             return org.xerial.snappy.Snappy.compress(input, inputOffset, length, output, outputOffset);
-        }
-
-        @Override
-        public byte[] compress(String text)
-                throws IOException {
-            return org.xerial.snappy.Snappy.compress(text);
-        }
-
-        @Override
-        public int maxCompressedLength(int length) {
-            return org.xerial.snappy.Snappy.maxCompressedLength(length);
         }
     }
 
@@ -68,7 +43,7 @@ public final class Snappy {
 
     static {
         SPI attempt = null;
-        String[] factories = System.getProperty("rocksdb.snappy", "iq80,xerial").split(",");
+        String[] factories = System.getProperty("rocksdb.snappy", "xerial").split(",");
         for (int i = 0; i < factories.length && attempt == null; i++) {
             String name = factories[i];
             try {
@@ -77,7 +52,7 @@ public final class Snappy {
                     name = "com.lindb.rocks.util.Snappy$XerialSnappy";
                 }
                 attempt = (SPI) Thread.currentThread().getContextClassLoader().loadClass(name).newInstance();
-            } catch (Throwable e) {
+            } catch (Throwable ignore) {
             }
         }
         SNAPPY = attempt;
@@ -92,22 +67,8 @@ public final class Snappy {
         SNAPPY.uncompress(compressed, uncompressed);
     }
 
-    public static void uncompress(byte[] input, int inputOffset, int length, byte[] output, int outputOffset)
-            throws IOException {
-        SNAPPY.uncompress(input, inputOffset, length, output, outputOffset);
-    }
-
     public static int compress(byte[] input, int inputOffset, int length, byte[] output, int outputOffset)
             throws IOException {
         return SNAPPY.compress(input, inputOffset, length, output, outputOffset);
-    }
-
-    public static byte[] compress(String text)
-            throws IOException {
-        return SNAPPY.compress(text);
-    }
-
-    public static int maxCompressedLength(int length) {
-        return SNAPPY.maxCompressedLength(length);
     }
 }

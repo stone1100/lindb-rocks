@@ -9,6 +9,7 @@ import com.lindb.rocks.io.BlockBuilder;
 import com.lindb.rocks.io.BlockMeta;
 import com.lindb.rocks.io.BlockTrailer;
 import com.lindb.rocks.io.Footer;
+import com.lindb.rocks.util.Bytes;
 import com.lindb.rocks.util.PureJavaCrc32C;
 import com.lindb.rocks.util.Snappy;
 
@@ -96,7 +97,7 @@ public class TableBuilder {
             Preconditions.checkState(dataBlockBuilder.isEmpty(), "Internal error: Table has a pending index entry but data block builder is empty");
 
             byte[] shortestSeparator = userComparator.findShortestSeparator(lastKey, key);
-
+            System.out.println(Bytes.toString(shortestSeparator) + "==" + pendingDataBlockIndex.getOffset() + "," + pendingDataBlockIndex.getDataSize());
             indexBlockBuilder.add(shortestSeparator, pendingDataBlockIndex.encode().array());
             pendingIndexEntry = false;
         }
@@ -111,8 +112,7 @@ public class TableBuilder {
         }
     }
 
-    private void flush()
-            throws IOException {
+    private void flush() throws IOException {
         Preconditions.checkState(!closed, "table is finished");
         if (dataBlockBuilder.isEmpty()) {
             return;
@@ -132,7 +132,7 @@ public class TableBuilder {
         ByteBuffer blockContents = raw;
         CompressionType blockCompressionType = CompressionType.NONE;
         if (compressionType == CompressionType.SNAPPY) {
-            ensureCompressedOutputCapacity(maxCompressedLength(raw.limit()));
+            ensureCompressedOutputCapacity(maxCompressedLength(raw.remaining()));
             try {
                 int compressedSize = Snappy.compress(raw.array(), raw.position(), raw.remaining(), compressedOutput, 0);
 
@@ -150,7 +150,7 @@ public class TableBuilder {
         BlockTrailer blockTrailer = new BlockTrailer(blockCompressionType, crc32c(blockContents, blockCompressionType));
 
         // create a meta to this block
-        BlockMeta blockMeta = new BlockMeta(position, blockContents.limit());
+        BlockMeta blockMeta = new BlockMeta(position, blockContents.remaining());
 
         // write data and trailer
         position += fileChannel.write(new ByteBuffer[]{blockContents, blockTrailer.encode()});

@@ -281,6 +281,39 @@ public class Bytes {
     }
 
     /**
+     * Convert an int value to a byte array.  Big-endian.  Same as what DataOutputStream.writeInt
+     * does.
+     *
+     * @param val value
+     * @return the byte array
+     */
+    public static byte[] toBytes(int val) {
+        byte[] b = new byte[4];
+        for (int i = 3; i > 0; i--) {
+            b[i] = (byte) val;
+            val >>>= 8;
+        }
+        b[0] = (byte) val;
+        return b;
+    }
+
+    public static int readVariableLengthInt(ByteBuffer buf) {
+        int result = 0;
+        for (int shift = 0; shift <= 28; shift += 7) {
+            int b = buf.get();
+
+            // add the lower 7 bits to the result
+            result |= ((b & 0x7f) << shift);
+
+            // if high bit is not set, this is the last byte in the number
+            if ((b & 0x80) == 0) {
+                return result;
+            }
+        }
+        throw new NumberFormatException("last byte of variable length int has high bit set");
+    }
+
+    /**
      * Gets an unsigned 32-bit integer at the current {@code position}
      * and increases the {@code position} by {@code 4} in this buffer.
      *
@@ -411,6 +444,7 @@ public class Bytes {
             writeByteArray(out, b, 0, b.length);
         }
     }
+
 
     /**
      * Write byte-array to out with a vint length prefix.
