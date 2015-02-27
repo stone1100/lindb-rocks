@@ -137,12 +137,4 @@ public class Level0 implements SeekingIterable<InternalKey, byte[]> {
         files.add(fileMetaData);
     }
 
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder();
-        sb.append("Level0");
-        sb.append("{files=").append(files);
-        sb.append('}');
-        return sb.toString();
-    }
 }

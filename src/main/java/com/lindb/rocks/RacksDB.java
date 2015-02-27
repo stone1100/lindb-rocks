@@ -7,7 +7,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lindb.rocks.log.Log;
 import com.lindb.rocks.log.Log.Reader;
 import com.lindb.rocks.log.Log.Writer;
-import com.lindb.rocks.log.LogMonitors;
+import com.lindb.rocks.log.Monitors;
 import com.lindb.rocks.log.Monitor;
 import com.lindb.rocks.table.*;
 import com.lindb.rocks.util.Bytes;
@@ -440,7 +440,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
         Preconditions.checkState(mutex.isHeldByCurrentThread());
         File file = new File(databasePath, FileName.logFileName(fileNumber));
         try (FileChannel channel = new FileInputStream(file).getChannel()) {
-            Monitor logMonitor = LogMonitors.logMonitor();
+            Monitor logMonitor = Monitors.logMonitor();
             Reader logReader = new Reader(channel, logMonitor, true, 0);
 
             // Log(options_.info_log, "Recovering log #%llu", (unsigned long long) log_number);

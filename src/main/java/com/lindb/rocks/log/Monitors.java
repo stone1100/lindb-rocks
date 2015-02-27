@@ -1,6 +1,6 @@
 package com.lindb.rocks.log;
 
-public final class LogMonitors {
+public final class Monitors {
     public static Monitor throwExceptionMonitor() {
         return new Monitor() {
             @Override
@@ -30,6 +30,6 @@ public final class LogMonitors {
         };
     }
 
-    private LogMonitors() {
+    private Monitors() {
     }
 }

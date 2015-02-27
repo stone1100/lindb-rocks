@@ -24,8 +24,8 @@ public class VersionEdit {
 
     public VersionEdit(ByteBuffer data) {
         while (data.hasRemaining()) {
-            int i = data.getInt();
-            VersionEditTag tag = VersionEditTag.getValueTypeByPersistentId(i);
+            byte code = data.get();
+            VersionEditTag tag = VersionEditTag.getTypeByCode(code);
             tag.readValue(data, this);
         }
     }
@@ -119,7 +119,8 @@ public class VersionEdit {
         for (VersionEditTag versionEditTag : VersionEditTag.values()) {
             versionEditTag.writeValue(data, this);
         }
-        return (ByteBuffer) data.flip();
+        data.flip();
+        return data;
     }
 
 }

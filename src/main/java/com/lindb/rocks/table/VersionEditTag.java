@@ -6,9 +6,7 @@ import java.nio.ByteBuffer;
 import java.util.Map.Entry;
 
 public enum VersionEditTag {
-    // 8 is no longer used. It was used for large value refs.
-
-    COMPARATOR(1) {
+    COMPARATOR((byte) 1) {
         @Override
         public void readValue(ByteBuffer input, VersionEdit versionEdit) {
             versionEdit.setComparatorName(Bytes.toString(Bytes.readLengthPrefixedBytes(input)));
@@ -18,12 +16,12 @@ public enum VersionEditTag {
         public void writeValue(ByteBuffer output, VersionEdit versionEdit) {
             String comparatorName = versionEdit.getComparatorName();
             if (comparatorName != null) {
-                output.putInt(getPersistentId());
+                output.put(code());
                 Bytes.writeLengthPrefixedBytes(output, Bytes.toBytes(comparatorName));
             }
         }
     },
-    LOG_NUMBER(2) {
+    LOG_NUMBER((byte)2) {
         @Override
         public void readValue(ByteBuffer input, VersionEdit versionEdit) {
             versionEdit.setLogNumber(input.getLong());
@@ -33,13 +31,13 @@ public enum VersionEditTag {
         public void writeValue(ByteBuffer output, VersionEdit versionEdit) {
             Long logNumber = versionEdit.getLogNumber();
             if (logNumber != null) {
-                output.putInt(getPersistentId());
+                output.put(code());
                 output.putLong(logNumber);
             }
         }
     },
 
-    PREVIOUS_LOG_NUMBER(9) {
+    PREVIOUS_LOG_NUMBER((byte)3) {
         @Override
         public void readValue(ByteBuffer input, VersionEdit versionEdit) {
             versionEdit.setPreviousLogNumber(input.getLong());
@@ -49,13 +47,13 @@ public enum VersionEditTag {
         public void writeValue(ByteBuffer output, VersionEdit versionEdit) {
             Long previousLogNumber = versionEdit.getPreviousLogNumber();
             if (previousLogNumber != null) {
-                output.putInt(getPersistentId());
+                output.put(code());
                 output.putLong(previousLogNumber);
             }
         }
     },
 
-    NEXT_FILE_NUMBER(3) {
+    NEXT_FILE_NUMBER((byte)4) {
         @Override
         public void readValue(ByteBuffer input, VersionEdit versionEdit) {
             versionEdit.setNextFileNumber(input.getLong());
@@ -65,13 +63,13 @@ public enum VersionEditTag {
         public void writeValue(ByteBuffer output, VersionEdit versionEdit) {
             Long nextFileNumber = versionEdit.getNextFileNumber();
             if (nextFileNumber != null) {
-                output.putInt(getPersistentId());
+                output.put(code());
                 output.putLong(nextFileNumber);
             }
         }
     },
 
-    LAST_SEQUENCE(4) {
+    LAST_SEQUENCE((byte)5) {
         @Override
         public void readValue(ByteBuffer input, VersionEdit versionEdit) {
             versionEdit.setLastSequenceNumber(input.getLong());
@@ -81,13 +79,13 @@ public enum VersionEditTag {
         public void writeValue(ByteBuffer output, VersionEdit versionEdit) {
             Long lastSequenceNumber = versionEdit.getLastSequenceNumber();
             if (lastSequenceNumber != null) {
-                output.putInt(getPersistentId());
+                output.put(code());
                 output.putLong(lastSequenceNumber);
             }
         }
     },
 
-    COMPACT_POINTER(5) {
+    COMPACT_POINTER((byte)6) {
         @Override
         public void readValue(ByteBuffer input, VersionEdit versionEdit) {
             // level
@@ -102,7 +100,7 @@ public enum VersionEditTag {
         @Override
         public void writeValue(ByteBuffer output, VersionEdit versionEdit) {
             for (Entry<Integer, InternalKey> entry : versionEdit.getCompactPointers().entrySet()) {
-                output.putInt(getPersistentId());
+                output.put(code());
 
                 // level
                 output.putInt(entry.getKey());
@@ -113,7 +111,7 @@ public enum VersionEditTag {
         }
     },
 
-    DELETED_FILE(6) {
+    DELETED_FILE((byte)7) {
         @Override
         public void readValue(ByteBuffer input, VersionEdit versionEdit) {
             // level
@@ -128,7 +126,7 @@ public enum VersionEditTag {
         @Override
         public void writeValue(ByteBuffer output, VersionEdit versionEdit) {
             for (Entry<Integer, Long> entry : versionEdit.getDeletedFiles().entries()) {
-                output.putInt(getPersistentId());
+                output.put(code());
 
                 // level
                 output.putInt(entry.getKey());
@@ -139,7 +137,7 @@ public enum VersionEditTag {
         }
     },
 
-    NEW_FILE(7) {
+    NEW_FILE((byte)8) {
         @Override
         public void readValue(ByteBuffer input, VersionEdit versionEdit) {
             // level
@@ -163,7 +161,7 @@ public enum VersionEditTag {
         @Override
         public void writeValue(ByteBuffer output, VersionEdit versionEdit) {
             for (Entry<Integer, FileMetaData> entry : versionEdit.getNewFiles().entries()) {
-                output.putInt(getPersistentId());
+                output.put(code());
 
                 // level
                 output.putInt(entry.getKey());
@@ -184,23 +182,37 @@ public enum VersionEditTag {
         }
     };
 
-    public static VersionEditTag getValueTypeByPersistentId(int persistentId) {
-        for (VersionEditTag compressionType : VersionEditTag.values()) {
-            if (compressionType.persistentId == persistentId) {
-                return compressionType;
-            }
+    public static VersionEditTag getTypeByCode(byte code) {
+        switch (code) {
+            case 1:
+                return COMPARATOR;
+            case 2:
+                return LOG_NUMBER;
+            case 3:
+                return PREVIOUS_LOG_NUMBER;
+            case 4:
+                return NEXT_FILE_NUMBER;
+            case 5:
+                return LAST_SEQUENCE;
+            case 6:
+                return COMPACT_POINTER;
+            case 7:
+                return DELETED_FILE;
+            case 8:
+                return NEW_FILE;
+            default:
+                throw new IllegalArgumentException(String.format("Unknown %s code %d", VersionEditTag.class.getSimpleName(), code));
         }
-        throw new IllegalArgumentException(String.format("Unknown %s persistentId %d", VersionEditTag.class.getSimpleName(), persistentId));
     }
 
-    private final int persistentId;
+    private final byte code;
 
-    VersionEditTag(int persistentId) {
-        this.persistentId = persistentId;
+    VersionEditTag(byte code) {
+        this.code = code;
     }
 
-    public int getPersistentId() {
-        return persistentId;
+    public byte code() {
+        return code;
     }
 
     public abstract void readValue(ByteBuffer input, VersionEdit versionEdit);
