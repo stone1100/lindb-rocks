@@ -1,6 +1,7 @@
 package com.lindb.rocks.util;
 
-import java.nio.ByteBuffer;
+import com.lindb.rocks.io.ByteArrayStream;
+
 import java.util.Arrays;
 
 public class IntVector {

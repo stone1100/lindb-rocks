@@ -9,6 +9,8 @@ import com.lindb.rocks.DBConstants;
 import com.lindb.rocks.FileName;
 import com.lindb.rocks.LookupKey;
 import com.lindb.rocks.LookupResult;
+import com.lindb.rocks.log.Log;
+import com.lindb.rocks.log.Log.Writer;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -46,7 +48,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
     private final TableCache tableCache;
     private final InternalKeyComparator internalKeyComparator;
 
-    private MMapLogWriter descriptorLog;
+    private Writer descriptorLog;
     private final Map<Integer, InternalKey> compactPointers = Maps.newTreeMap();
 
     public VersionSet(File databaseDir, TableCache tableCache, InternalKeyComparator internalKeyComparator)
@@ -70,7 +72,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
             edit.setNextFileNumber(nextFileNumber.get());
             edit.setLastSequenceNumber(lastSequence);
 
-            MMapLogWriter log = Logs.createLogWriter(new File(databaseDir, FileName.descriptorFileName(manifestFileNumber)), manifestFileNumber);
+            Writer log = Log.createWriter(new File(databaseDir, FileName.descriptorFileName(manifestFileNumber)), manifestFileNumber);
             try {
                 writeSnapshot(log);
                 log.addRecord(edit.encode(), false);
@@ -224,7 +226,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
             // a temporary file that contains a snapshot of the current version.
             if (descriptorLog == null) {
                 edit.setNextFileNumber(nextFileNumber.get());
-                descriptorLog = Logs.createLogWriter(new File(databaseDir, FileName.descriptorFileName(manifestFileNumber)), manifestFileNumber);
+                descriptorLog = Log.createWriter(new File(databaseDir, FileName.descriptorFileName(manifestFileNumber)), manifestFileNumber);
                 writeSnapshot(descriptorLog);
                 createdNewManifest = true;
             }
@@ -255,7 +257,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
         prevLogNumber = edit.getPreviousLogNumber();
     }
 
-    private void writeSnapshot(MMapLogWriter log)
+    private void writeSnapshot(Writer log)
             throws IOException {
         // Save metadata
         VersionEdit edit = new VersionEdit();

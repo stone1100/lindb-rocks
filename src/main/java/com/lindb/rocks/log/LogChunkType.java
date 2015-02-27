@@ -1,4 +1,4 @@
-package com.lindb.rocks.table;
+package com.lindb.rocks.log;
 
 public enum LogChunkType {
     ZERO_TYPE((byte) 0),

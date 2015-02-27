@@ -1,4 +1,4 @@
-package com.lindb.rocks.table;
+package com.lindb.rocks.log;
 
 public interface LogMonitor {
     void corruption(long bytes, String reason);

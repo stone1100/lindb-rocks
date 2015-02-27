@@ -1,11 +1,14 @@
 package com.lindb.rocks;
 
+import com.lindb.rocks.util.Bytes;
+
 public final class DBConstants {
     /**
      * An empty instance.
      */
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
-
+    //Record header is sequence number(8 bytes) + record count(4b bytes)
+    public static final int RECORD_HEADER_SIZE = Bytes.SIZEOF_LONG + Bytes.SIZEOF_INT;
     public static final int MAJOR_VERSION = 0;
     public static final int MINOR_VERSION = 1;
 

@@ -1,5 +1,7 @@
-package com.lindb.rocks.table;
+package com.lindb.rocks.log;
 
+import com.lindb.rocks.log.Log.Writer;
+import com.lindb.rocks.table.LogReader;
 import org.junit.Test;
 
 import java.io.File;
@@ -16,10 +18,10 @@ public class MMapLogWriterTest {
             throws Exception {
         File file = File.createTempFile("test", ".log");
         try {
-            int recordSize = LogConstants.BLOCK_SIZE - LogConstants.CHUNK_HEADER_SIZE;
+            int recordSize = Log.BLOCK_SIZE - Log.CHUNK_HEADER_SIZE;
             ByteBuffer record = ByteBuffer.allocate(recordSize);
 
-            MMapLogWriter writer = new MMapLogWriter(file, 10);
+            Writer writer = new Writer(file, 10);
             writer.addRecord(record, false);
             writer.close();
 

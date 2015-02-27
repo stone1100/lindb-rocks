@@ -1,4 +1,4 @@
-package com.lindb.rocks.util;
+package com.lindb.rocks.io;
 
 import java.util.Arrays;
 

@@ -1,7 +1,6 @@
 package com.lindb.rocks.io;
 
 import com.google.common.base.Preconditions;
-import com.lindb.rocks.util.ByteArrayStream;
 import com.lindb.rocks.util.Bytes;
 import com.lindb.rocks.util.IntVector;
 

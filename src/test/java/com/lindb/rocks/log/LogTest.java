@@ -1,6 +1,8 @@
-package com.lindb.rocks.table;
+package com.lindb.rocks.log;
 
 import com.google.common.collect.ImmutableList;
+import com.lindb.rocks.log.Log.Writer;
+import com.lindb.rocks.table.LogReader;
 import com.lindb.rocks.util.CloseableUtil;
 import org.junit.After;
 import org.junit.Assert;
@@ -34,7 +36,7 @@ public class LogTest {
         }
     };
 
-    private MMapLogWriter writer;
+    private Writer writer;
 
     @Test
     public void testEmptyBlock() throws Exception {
@@ -117,7 +119,7 @@ public class LogTest {
 
     @Before
     public void setUp() throws Exception {
-        writer = Logs.createLogWriter(File.createTempFile("table", ".log"), 42);
+        writer = Log.createWriter(File.createTempFile("table", ".log"), 42);
     }
 
     @After

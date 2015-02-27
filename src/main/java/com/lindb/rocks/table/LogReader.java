@@ -1,5 +1,9 @@
 package com.lindb.rocks.table;
 
+import com.lindb.rocks.log.Log;
+import com.lindb.rocks.log.LogChunkType;
+import com.lindb.rocks.log.LogMonitor;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -26,12 +30,12 @@ public class LogReader {
     /**
      * Scratch buffer in which the next record is assembled.
      */
-    private final ByteBuffer recordScratch = ByteBuffer.allocate(LogConstants.BLOCK_SIZE);
+    private final ByteBuffer recordScratch = ByteBuffer.allocate(Log.BLOCK_SIZE);
 
     /**
      * Scratch buffer for current block.  The currentBlock is sliced off the underlying buffer.
      */
-    private final ByteBuffer blockScratch = ByteBuffer.allocate(LogConstants.BLOCK_SIZE);
+    private final ByteBuffer blockScratch = ByteBuffer.allocate(Log.BLOCK_SIZE);
 
     /**
      * The current block records are being read from.
@@ -138,7 +142,7 @@ public class LogReader {
         currentChunk = null;
 
         // read the next block if necessary
-        if (currentBlock == null || (currentBlock.remaining() < LogConstants.CHUNK_HEADER_SIZE)) {
+        if (currentBlock == null || (currentBlock.remaining() < Log.CHUNK_HEADER_SIZE)) {
             if (!readNextBlock()) {
                 if (eof) {
                     return LogChunkType.EOF;
@@ -154,7 +158,7 @@ public class LogReader {
 
         // verify length
         if (length > currentBlock.remaining()) {
-            int dropSize = currentBlock.remaining() + LogConstants.CHUNK_HEADER_SIZE;
+            int dropSize = currentBlock.remaining() + Log.CHUNK_HEADER_SIZE;
             reportCorruption(dropSize, "Invalid chunk length");
             currentBlock = null;
             return LogChunkType.BAD_CHUNK;
@@ -169,7 +173,7 @@ public class LogReader {
         }
 
         // Skip physical record that started before initialOffset
-        if (endOfBufferOffset - LogConstants.CHUNK_HEADER_SIZE - length < initialOffset) {
+        if (endOfBufferOffset - Log.CHUNK_HEADER_SIZE - length < initialOffset) {
             currentBlock.position(currentBlock.position() + length);
             return LogChunkType.BAD_CHUNK;
         }
@@ -186,7 +190,7 @@ public class LogReader {
                 // been corrupted and if we trust it, we could find some
                 // fragment of a real log record that just happens to look
                 // like a valid log record.
-                int dropSize = currentBlock.remaining() + LogConstants.CHUNK_HEADER_SIZE;
+                int dropSize = currentBlock.remaining() + Log.CHUNK_HEADER_SIZE;
                 currentBlock = null;
                 reportCorruption(dropSize, "Invalid chunk checksum");
                 return LogChunkType.BAD_CHUNK;
@@ -223,7 +227,7 @@ public class LogReader {
                 endOfBufferOffset += bytesRead;
             } catch (IOException e) {
                 currentBlock = null;
-                reportDrop(LogConstants.BLOCK_SIZE, e);
+                reportDrop(Log.BLOCK_SIZE, e);
                 eof = true;
                 return false;
             }

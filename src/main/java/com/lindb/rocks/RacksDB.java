@@ -4,6 +4,9 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.lindb.rocks.log.Log;
+import com.lindb.rocks.log.Log.Writer;
+import com.lindb.rocks.log.LogMonitor;
 import com.lindb.rocks.table.*;
 import com.lindb.rocks.util.Bytes;
 import com.lindb.rocks.util.Snappy;
@@ -21,7 +24,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.lindb.rocks.DBConstants.*;
-import static com.lindb.rocks.table.LogConstants.RECORD_HEADER_SIZE;
 import static com.lindb.rocks.table.SequenceNumber.MAX_SEQUENCE_NUMBER;
 import static com.lindb.rocks.table.ValueType.*;
 
@@ -43,7 +45,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
     private final ReentrantLock mutex = new ReentrantLock();
     private final Condition backgroundCondition = mutex.newCondition();
     private final List<Long> pendingOutputs = Lists.newArrayList();
-    private MMapLogWriter log;
+    private Writer log;
     private MemTable memTable;
     private MemTable immutableMemTable;
     private Future backgroundCompaction;
@@ -136,7 +138,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
 
             // open transaction log
             long logFileNumber = versions.getNextFileNumber();
-            this.log = Logs.createLogWriter(new File(databasePath, FileName.logFileName(logFileNumber)), logFileNumber);
+            this.log = Log.createWriter(new File(databasePath, FileName.logFileName(logFileNumber)), logFileNumber);
             edit.setLogNumber(log.getFileNumber());
 
             // apply recovered edits
@@ -732,7 +734,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
                 // open a new log
                 long logNumber = versions.getNextFileNumber();
                 try {
-                    this.log = Logs.createLogWriter(new File(databasePath, FileName.logFileName(logNumber)), logNumber);
+                    this.log = Log.createWriter(new File(databasePath, FileName.logFileName(logNumber)), logNumber);
                 } catch (IOException e) {
                     throw new RuntimeException("Unable to open new log file " +
                             new File(databasePath, FileName.logFileName(logNumber)).getAbsoluteFile(), e);
