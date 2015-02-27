@@ -5,6 +5,8 @@ import com.google.common.base.Preconditions;
 import com.lindb.rocks.Options;
 import com.lindb.rocks.io.BlockEntry;
 import com.lindb.rocks.io.BlockHelper;
+import com.lindb.rocks.table.Table.Reader;
+import com.lindb.rocks.table.Table.Writer;
 import com.lindb.rocks.util.CloseableUtil;
 import org.junit.After;
 import org.junit.Assert;
@@ -26,9 +28,9 @@ public class MMapTableTest {
     private RandomAccessFile randomAccessFile;
     private FileChannel fileChannel;
 
-    protected MMapTable createTable(FileChannel fileChannel, Comparator<byte[]> comparator, boolean verifyChecksums)
+    protected Reader createTable(FileChannel fileChannel, Comparator<byte[]> comparator, boolean verifyChecksums)
             throws IOException {
-        return new MMapTable(fileChannel, comparator, verifyChecksums);
+        return new Reader(fileChannel, comparator, verifyChecksums);
     }
 
     @Test
@@ -91,14 +93,14 @@ public class MMapTableTest {
     private void tableTest(int blockSize, int blockRestartInterval, List<BlockEntry> entries) throws IOException {
         reopenFile();
         Options options = new Options().blockSize(blockSize).blockRestartInterval(blockRestartInterval);
-        TableBuilder builder = new TableBuilder(options, fileChannel, new ByteArrayComparator());
+        Writer writer = new Writer(options, fileChannel, new ByteArrayComparator());
 
         for (BlockEntry entry : entries) {
-            builder.add(entry.getKey(), entry.getValue());
+            writer.add(entry.getKey(), entry.getValue());
         }
-        builder.finish();
+        writer.finish();
 
-        MMapTable table = createTable(fileChannel, new ByteArrayComparator(), true);
+        Reader table = createTable(fileChannel, new ByteArrayComparator(), true);
 
         SeekingIterator<byte[], byte[]> seekingIterator = table.iterator();
         BlockHelper.assertSequence(seekingIterator, entries);

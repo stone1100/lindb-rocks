@@ -3,6 +3,7 @@ package com.lindb.rocks.table;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.*;
 import com.lindb.rocks.FileName;
+import com.lindb.rocks.table.Table.Reader;
 import com.lindb.rocks.util.CloseableUtil;
 
 import java.io.File;
@@ -17,7 +18,7 @@ import java.util.concurrent.ExecutionException;
  */
 public class TableCache {
     private final LoadingCache<Long, TableAndFile> cache;
-    private final Finalizer<MMapTable> finalizer = new Finalizer<>(1);
+    private final Finalizer<Reader> finalizer = new Finalizer<>(1);
 
     public TableCache(final File databasePath, int tableCacheSize, final UserComparator userComparator, final boolean verifyChecksums) {
         Preconditions.checkNotNull(databasePath, "databasePath is null");
@@ -27,7 +28,7 @@ public class TableCache {
                     public void onRemoval(RemovalNotification<Long, TableAndFile> removalNotification) {
                         TableAndFile tableAndFile = removalNotification.getValue();
                         if (tableAndFile != null) {
-                            MMapTable table = tableAndFile.getTable();
+                            Reader table = tableAndFile.getTable();
                             finalizer.addCleanup(table, table.closer());
                         }
                     }
@@ -51,8 +52,8 @@ public class TableCache {
         return getTable(file.getNumber()).getApproximateOffsetOf(key);
     }
 
-    private MMapTable getTable(long number) {
-        MMapTable table;
+    private Reader getTable(long number) {
+        Reader table;
         try {
             table = cache.get(number).getTable();
         } catch (ExecutionException e) {
@@ -75,7 +76,7 @@ public class TableCache {
     }
 
     private static final class TableAndFile {
-        private final MMapTable table;
+        private final Reader table;
         private final FileChannel fileChannel;
 
         private TableAndFile(File databasePath, long fileNumber, UserComparator userComparator, boolean verifyChecksums) throws IOException {
@@ -83,14 +84,14 @@ public class TableCache {
             File tableFile = new File(databasePath, tableFileName);
             fileChannel = new FileInputStream(tableFile).getChannel();
             try {
-                table = new MMapTable(fileChannel, userComparator, verifyChecksums);
+                table = new Reader(fileChannel, userComparator, verifyChecksums);
             } catch (IOException e) {
                 CloseableUtil.close(fileChannel);
                 throw e;
             }
         }
 
-        public MMapTable getTable() {
+        public Reader getTable() {
             return table;
         }
     }

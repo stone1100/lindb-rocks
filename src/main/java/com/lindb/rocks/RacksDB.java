@@ -7,8 +7,8 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lindb.rocks.log.Log;
 import com.lindb.rocks.log.Log.Reader;
 import com.lindb.rocks.log.Log.Writer;
-import com.lindb.rocks.log.Monitors;
 import com.lindb.rocks.log.Monitor;
+import com.lindb.rocks.log.Monitors;
 import com.lindb.rocks.table.*;
 import com.lindb.rocks.util.Bytes;
 import com.lindb.rocks.util.Snappy;
@@ -836,7 +836,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
             InternalKey largest = null;
             FileChannel channel = new FileOutputStream(file).getChannel();
             try {
-                TableBuilder tableBuilder = new TableBuilder(options, channel, new InternalUserComparator(internalKeyComparator));
+                Table.Writer tableBuilder = new Table.Writer(options, channel, new InternalUserComparator(internalKeyComparator));
 
                 for (Map.Entry<InternalKey, byte[]> entry : data) {
                     // update keys
@@ -995,7 +995,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
 
             File file = new File(databasePath, FileName.tableFileName(fileNumber));
             compactionState.outfile = new FileOutputStream(file).getChannel();
-            compactionState.builder = new TableBuilder(options, compactionState.outfile, new InternalUserComparator(internalKeyComparator));
+            compactionState.builder = new Table.Writer(options, compactionState.outfile, new InternalUserComparator(internalKeyComparator));
         } finally {
             mutex.unlock();
         }
@@ -1145,7 +1145,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
 
         // State kept for output being generated
         private FileChannel outfile;
-        private TableBuilder builder;
+        private Table.Writer builder;
 
         // Current file being generated
         private long currentFileNumber;

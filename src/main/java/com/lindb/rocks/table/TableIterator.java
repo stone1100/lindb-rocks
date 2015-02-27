@@ -11,11 +11,11 @@ import java.util.Map.Entry;
  *         2/9/2015 4:42 PM
  */
 public final class TableIterator extends AbstractSeekingIterator<byte[], byte[]> {
-    private final MMapTable table;
+    private final Table.Reader table;
     private final BlockIterator dataBlockIndexIterator;
     private BlockIterator current;
 
-    public TableIterator(MMapTable table, BlockIterator dataBlockIndexIterator) {
+    public TableIterator(Table.Reader table, BlockIterator dataBlockIndexIterator) {
         this.table = table;
         this.dataBlockIndexIterator = dataBlockIndexIterator;
     }
