@@ -9,7 +9,6 @@ import com.lindb.rocks.io.BlockBuilder;
 import com.lindb.rocks.io.BlockMeta;
 import com.lindb.rocks.io.BlockTrailer;
 import com.lindb.rocks.io.Footer;
-import com.lindb.rocks.util.Bytes;
 import com.lindb.rocks.util.PureJavaCrc32C;
 import com.lindb.rocks.util.Snappy;
 

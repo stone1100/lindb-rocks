@@ -1,7 +1,5 @@
 package com.lindb.rocks.log;
 
-import com.lindb.rocks.log.Monitor;
-
 public final class LogMonitors {
     public static Monitor throwExceptionMonitor() {
         return new Monitor() {
