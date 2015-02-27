@@ -1,7 +1,7 @@
 package com.lindb.rocks.log;
 
+import com.lindb.rocks.log.Log.Reader;
 import com.lindb.rocks.log.Log.Writer;
-import com.lindb.rocks.table.LogReader;
 import org.junit.Test;
 
 import java.io.File;
@@ -25,11 +25,11 @@ public class MMapLogWriterTest {
             writer.addRecord(record, false);
             writer.close();
 
-            LogMonitor logMonitor = new AssertNoCorruptionLogMonitor();
+            Monitor logMonitor = new AssertNoCorruptionLogMonitor();
 
             FileChannel channel = new FileInputStream(file).getChannel();
 
-            LogReader logReader = new LogReader(channel, logMonitor, true, 0);
+            Reader logReader = new Reader(channel, logMonitor, true, 0);
 
             int count = 0;
             for (ByteBuffer slice = logReader.readRecord(); slice != null; slice = logReader.readRecord()) {
@@ -43,7 +43,7 @@ public class MMapLogWriterTest {
     }
 
     private static class AssertNoCorruptionLogMonitor
-            implements LogMonitor {
+            implements Monitor {
         @Override
         public void corruption(long bytes, String reason) {
             fail("corruption at " + bytes + " reason: " + reason);

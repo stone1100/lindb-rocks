@@ -1,10 +1,10 @@
-package com.lindb.rocks.table;
+package com.lindb.rocks.log;
 
-import com.lindb.rocks.log.LogMonitor;
+import com.lindb.rocks.log.Monitor;
 
 public final class LogMonitors {
-    public static LogMonitor throwExceptionMonitor() {
-        return new LogMonitor() {
+    public static Monitor throwExceptionMonitor() {
+        return new Monitor() {
             @Override
             public void corruption(long bytes, String reason) {
                 throw new RuntimeException(String.format("corruption of %s bytes: %s", bytes, reason));
@@ -17,8 +17,8 @@ public final class LogMonitors {
         };
     }
 
-    public static LogMonitor logMonitor() {
-        return new LogMonitor() {
+    public static Monitor logMonitor() {
+        return new Monitor() {
             @Override
             public void corruption(long bytes, String reason) {
                 System.out.println(String.format("corruption of %s bytes: %s", bytes, reason));

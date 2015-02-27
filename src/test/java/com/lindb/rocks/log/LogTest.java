@@ -2,7 +2,7 @@ package com.lindb.rocks.log;
 
 import com.google.common.collect.ImmutableList;
 import com.lindb.rocks.log.Log.Writer;
-import com.lindb.rocks.table.LogReader;
+import com.lindb.rocks.log.Log.Reader;
 import com.lindb.rocks.util.CloseableUtil;
 import org.junit.After;
 import org.junit.Assert;
@@ -24,7 +24,7 @@ import static java.util.Arrays.asList;
  *         2/26/2015 4:44 PM
  */
 public class LogTest {
-    private static final LogMonitor NO_CORRUPTION_MONITOR = new LogMonitor() {
+    private static final Monitor NO_CORRUPTION_MONITOR = new Monitor() {
         @Override
         public void corruption(long bytes, String reason) {
             Assert.fail(String.format("corruption of %s bytes: %s", bytes, reason));
@@ -104,7 +104,7 @@ public class LogTest {
         // test readRecord
         FileChannel fileChannel = new FileInputStream(writer.getFile()).getChannel();
         try {
-            LogReader reader = new LogReader(fileChannel, NO_CORRUPTION_MONITOR, true, 0);
+            Reader reader = new Reader(fileChannel, NO_CORRUPTION_MONITOR, true, 0);
             for (ByteBuffer expected : records) {
                 expected.flip();
                 ByteBuffer actual = reader.readRecord();

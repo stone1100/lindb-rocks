@@ -10,7 +10,9 @@ import com.lindb.rocks.FileName;
 import com.lindb.rocks.LookupKey;
 import com.lindb.rocks.LookupResult;
 import com.lindb.rocks.log.Log;
+import com.lindb.rocks.log.Log.Reader;
 import com.lindb.rocks.log.Log.Writer;
+import com.lindb.rocks.log.LogMonitors;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -293,7 +295,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
             Long prevLogNumber = null;
             Builder builder = new Builder(this, current);
 
-            LogReader reader = new LogReader(fileChannel, LogMonitors.throwExceptionMonitor(), true, 0);
+            Reader reader = new Reader(fileChannel, LogMonitors.throwExceptionMonitor(), true, 0);
             for (ByteBuffer record = reader.readRecord(); record != null; record = reader.readRecord()) {
                 // read version edit
                 VersionEdit edit = new VersionEdit(record);
