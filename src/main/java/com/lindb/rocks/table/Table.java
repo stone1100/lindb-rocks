@@ -24,9 +24,16 @@ import static com.lindb.rocks.io.BlockTrailer.BLOCK_TRAILER_ENCODED_LENGTH;
  *         2/27/2015 5:34 PM
  */
 public class Table {
-    public static class Writer {
-        public static final long TABLE_MAGIC_NUMBER = 0xdb4775248b80fb57L;
+    public static final long TABLE_MAGIC_NUMBER = 0xdb4775248b80fb57L;
 
+    public static int crc32c(byte[] data, int offset, int length, byte type) {
+        PureJavaCrc32C crc32c = new PureJavaCrc32C();
+        crc32c.update(data, offset, length);
+        crc32c.update(type & 0xFF);
+        return crc32c.getMaskedValue();
+    }
+
+    public static class Writer {
         private final int blockRestartInterval;
         private final int blockSize;
         private final CompressionType compressionType;
@@ -149,7 +156,7 @@ public class Table {
             }
 
             // create block trailer
-            BlockTrailer blockTrailer = new BlockTrailer(blockCompressionType, crc32c(blockContents, blockCompressionType));
+            BlockTrailer blockTrailer = new BlockTrailer(blockCompressionType, crc32c(blockContents.array(), blockContents.position(), blockContents.remaining(), blockCompressionType.code()));
 
             // create a meta to this block
             BlockMeta blockMeta = new BlockMeta(position, blockContents.remaining());
@@ -229,12 +236,6 @@ public class Table {
             compressedOutput = new byte[capacity];
         }
 
-        private static int crc32c(ByteBuffer data, CompressionType type) {
-            PureJavaCrc32C crc32c = new PureJavaCrc32C();
-            crc32c.update(data.array(), data.position(), data.remaining());
-            crc32c.update(type.code() & 0xFF);
-            return crc32c.getMaskedValue();
-        }
     }
 
     public static class Reader implements SeekingIterable<byte[], byte[]> {
@@ -285,11 +286,7 @@ public class Table {
 
             // only verify check sums if explicitly asked by the user
             if (verifyChecksums) {
-                // checksum data and the compression type in the trailer
-                PureJavaCrc32C checksum = new PureJavaCrc32C();
-                checksum.update(blockData, 0, blockData.length);
-                checksum.update(data.get() & 0xFF);
-                int actualCrc32c = checksum.getMaskedValue();
+                int actualCrc32c = crc32c(blockData, 0, blockData.length, data.get());
 
                 Preconditions.checkState(blockTrailer.getCrc32c() == actualCrc32c, "Block corrupted: checksum mismatch");
             }

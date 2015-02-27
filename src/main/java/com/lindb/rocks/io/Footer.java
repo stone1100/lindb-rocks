@@ -1,7 +1,7 @@
 package com.lindb.rocks.io;
 
 import com.google.common.base.Preconditions;
-import com.lindb.rocks.table.TableBuilder;
+import com.lindb.rocks.table.Table;
 
 import java.nio.ByteBuffer;
 
@@ -9,7 +9,6 @@ import static com.lindb.rocks.io.BlockMeta.BLOCK_META_ENCODED_LENGTH;
 import static com.lindb.rocks.util.Bytes.SIZEOF_LONG;
 
 /**
- *
  * @author huang_jie
  *         2/9/2015 4:12 PM
  */
@@ -38,7 +37,7 @@ public class Footer {
 
         // verify magic number
         long magicNumber = getUnsignedInt(data.getInt()) | (getUnsignedInt(data.getInt()) << 32);
-        Preconditions.checkArgument(magicNumber == TableBuilder.TABLE_MAGIC_NUMBER, "File is not a table (bad magic number)");
+        Preconditions.checkArgument(magicNumber == Table.TABLE_MAGIC_NUMBER, "File is not a table (bad magic number)");
 
         return new Footer(metaIndexBlockHandle, indexBlockHandle);
     }
@@ -51,8 +50,8 @@ public class Footer {
         ByteBuffer data = ByteBuffer.allocate(FOOTER_ENCODED_LENGTH);
         data.put(metaIndexBlockMeta.encode());
         data.put(indexBlockMeta.encode());
-        data.putInt((int) TableBuilder.TABLE_MAGIC_NUMBER);
-        data.putInt((int) (TableBuilder.TABLE_MAGIC_NUMBER >>> 32));
-        return (ByteBuffer)data.flip();
+        data.putInt((int) Table.TABLE_MAGIC_NUMBER);
+        data.putInt((int) (Table.TABLE_MAGIC_NUMBER >>> 32));
+        return (ByteBuffer) data.flip();
     }
 }

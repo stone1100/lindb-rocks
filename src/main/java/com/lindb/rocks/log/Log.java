@@ -36,10 +36,10 @@ public class Log {
         return new Writer(file, fileNumber);
     }
 
-    public static int getChunkChecksum(int chunkTypeId, byte[] buffer, int offset, int length) {
+    public static int getChunkChecksum(int chunkType, byte[] buffer, int offset, int length) {
         // Compute the crc of the record type and the payload.
         PureJavaCrc32C crc32C = new PureJavaCrc32C();
-        crc32C.update(chunkTypeId);
+        crc32C.update(chunkType);
         crc32C.update(buffer, offset, length);
         return crc32C.getMaskedValue();
     }
