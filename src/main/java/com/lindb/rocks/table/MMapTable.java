@@ -3,7 +3,11 @@ package com.lindb.rocks.table;
 import com.google.common.base.Preconditions;
 import com.lindb.rocks.CompressionType;
 import com.lindb.rocks.RacksDBException;
-import com.lindb.rocks.io.*;
+import com.lindb.rocks.io.Block.Reader;
+import com.lindb.rocks.io.BlockIterator;
+import com.lindb.rocks.io.BlockMeta;
+import com.lindb.rocks.io.BlockTrailer;
+import com.lindb.rocks.io.Footer;
 import com.lindb.rocks.util.*;
 
 import java.io.Closeable;
@@ -25,7 +29,7 @@ public class MMapTable implements SeekingIterable<byte[], byte[]> {
     private final FileChannel fileChannel;
     private final Comparator<byte[]> comparator;
     private final boolean verifyChecksums;
-    private final Block indexBlock;
+    private final Reader indexBlock;
     private final BlockMeta metaIndexBlockMeta;
 
     private static ByteBuffer uncompressedScratch = ByteBuffer.allocateDirect(4 * 1024 * 1024);
@@ -54,7 +58,7 @@ public class MMapTable implements SeekingIterable<byte[], byte[]> {
         return footer;
     }
 
-    protected Block readBlock(BlockMeta blockMeta) throws IOException {
+    protected Reader readBlock(BlockMeta blockMeta) throws IOException {
         // read block trailer
         data.position((int) blockMeta.getOffset() + blockMeta.getDataSize());
         int oldLimit = data.limit();
@@ -98,11 +102,11 @@ public class MMapTable implements SeekingIterable<byte[], byte[]> {
                 uncompressedScratch.clear();
             }
         }
-        return new Block(uncompressedBuffer, comparator);
+        return new Reader(uncompressedBuffer, comparator);
     }
 
-    public Block openBlock(BlockMeta blockMeta) {
-        Block dataBlock;
+    public Reader openBlock(BlockMeta blockMeta) {
+        Reader dataBlock;
         try {
             dataBlock = readBlock(blockMeta);
         } catch (IOException e) {

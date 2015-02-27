@@ -5,7 +5,7 @@ import com.google.common.base.Throwables;
 import com.lindb.rocks.CompressionType;
 import com.lindb.rocks.DBConstants;
 import com.lindb.rocks.Options;
-import com.lindb.rocks.io.BlockBuilder;
+import com.lindb.rocks.io.Block.Writer;
 import com.lindb.rocks.io.BlockMeta;
 import com.lindb.rocks.io.BlockTrailer;
 import com.lindb.rocks.io.Footer;
@@ -28,8 +28,8 @@ public class TableBuilder {
     private final CompressionType compressionType;
 
     private final FileChannel fileChannel;
-    private final BlockBuilder dataBlockBuilder;
-    private final BlockBuilder indexBlockBuilder;
+    private final Writer dataBlockBuilder;
+    private final Writer indexBlockBuilder;
     private byte[] lastKey;
     private final UserComparator userComparator;
 
@@ -68,10 +68,10 @@ public class TableBuilder {
         blockSize = options.blockSize();
         compressionType = options.compressionType();
 
-        dataBlockBuilder = new BlockBuilder(blockRestartInterval, userComparator);
+        dataBlockBuilder = new Writer(blockRestartInterval, userComparator);
 
         // with expected 50% compression
-        indexBlockBuilder = new BlockBuilder(1, userComparator);
+        indexBlockBuilder = new Writer(1, userComparator);
 
         lastKey = DBConstants.EMPTY_BYTE_ARRAY;
     }
@@ -122,7 +122,7 @@ public class TableBuilder {
         pendingIndexEntry = true;
     }
 
-    private BlockMeta writeBlock(BlockBuilder blockBuilder) throws IOException {
+    private BlockMeta writeBlock(Writer blockBuilder) throws IOException {
         // close the block
         ByteBuffer raw = blockBuilder.finish();
 
@@ -193,7 +193,7 @@ public class TableBuilder {
         closed = true;
 
         // write (empty) meta index block
-        BlockBuilder metaIndexBlockBuilder = new BlockBuilder(blockRestartInterval, new ByteArrayComparator());
+        Writer metaIndexBlockBuilder = new Writer(blockRestartInterval, new ByteArrayComparator());
 
         BlockMeta metaIndexBlockMeta = writeBlock(metaIndexBlockBuilder);
 

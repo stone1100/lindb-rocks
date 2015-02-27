@@ -1,5 +1,7 @@
 package com.lindb.rocks.io;
 
+import com.lindb.rocks.io.Block.Reader;
+import com.lindb.rocks.io.Block.Writer;
 import com.lindb.rocks.table.ByteArrayComparator;
 import org.junit.Assert;
 import org.junit.Test;
@@ -68,7 +70,7 @@ public class BlockTest {
     }
 
     private static void blockTest(int blockRestartInterval, List<BlockEntry> entries) {
-        BlockBuilder builder = new BlockBuilder(blockRestartInterval, new ByteArrayComparator());
+        Writer builder = new Writer(blockRestartInterval, new ByteArrayComparator());
 
         for (BlockEntry entry : entries) {
             builder.add(entry.getKey(), entry.getValue());
@@ -78,7 +80,7 @@ public class BlockTest {
         ByteBuffer blockBuf = builder.finish();
         Assert.assertEquals(builder.currentSizeEstimate(), BlockHelper.estimateBlockSize(blockRestartInterval, entries));
 
-        Block block = new Block(blockBuf, new ByteArrayComparator());
+        Reader block = new Reader(blockBuf, new ByteArrayComparator());
         Assert.assertEquals(block.size(), BlockHelper.estimateBlockSize(blockRestartInterval, entries));
 
         BlockIterator blockIterator = block.iterator();

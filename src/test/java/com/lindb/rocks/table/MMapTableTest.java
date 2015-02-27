@@ -5,7 +5,6 @@ import com.google.common.base.Preconditions;
 import com.lindb.rocks.Options;
 import com.lindb.rocks.io.BlockEntry;
 import com.lindb.rocks.io.BlockHelper;
-import com.lindb.rocks.util.Bytes;
 import com.lindb.rocks.util.CloseableUtil;
 import org.junit.After;
 import org.junit.Assert;
@@ -81,7 +80,6 @@ public class MMapTableTest {
 
         // one entry per block
         tableTest(1, Integer.MAX_VALUE, entries);
-        System.out.println("*****************************");
         // about 3 blocks
         tableTest(BlockHelper.estimateBlockSize(Integer.MAX_VALUE, entries) / 3, Integer.MAX_VALUE, entries);
     }
