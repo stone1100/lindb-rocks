@@ -21,7 +21,7 @@ public final class FileName {
         LOG,
         DB_LOCK,
         TABLE,
-        DESCRIPTOR,
+        MANIFEST,
         CURRENT,
         TEMP,
         INFO_LOG//either the current one, or an old one
@@ -45,9 +45,9 @@ public final class FileName {
 
     /**
      * @param number
-     * @return the name of descriptor file with the specified number
+     * @return the name of manifest file with the specified number
      */
-    public static String descriptorFileName(long number) {
+    public static String manifestFileName(long number) {
         Preconditions.checkArgument(number > 0, "number is negative");
         return String.format("MANIFEST-%06d", number);
     }
@@ -111,7 +111,7 @@ public final class FileName {
             return new FileInfo(FileType.INFO_LOG);
         } else if (fileName.startsWith("MANIFEST-")) {
             long fileNumber = Long.parseLong(removePrefix(fileName, "MANIFEST-"));
-            return new FileInfo(FileType.DESCRIPTOR, fileNumber);
+            return new FileInfo(FileType.MANIFEST, fileNumber);
         } else if (fileName.endsWith(".log")) {
             long fileNumber = Long.parseLong(removeSuffix(fileName, ".log"));
             return new FileInfo(FileType.LOG, fileNumber);
@@ -134,7 +134,7 @@ public final class FileName {
      * @throws IOException
      */
     public static boolean setCurrentFile(File databaseDir, long descriptorNumber) throws IOException {
-        String manifest = descriptorFileName(descriptorNumber);
+        String manifest = manifestFileName(descriptorNumber);
         String temp = tempFileName(descriptorNumber);
         File tempFile = new File(databaseDir, temp);
         Files.write(manifest + "\n", tempFile, Charsets.UTF_8);

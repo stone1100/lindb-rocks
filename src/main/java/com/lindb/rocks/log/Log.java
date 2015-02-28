@@ -18,6 +18,7 @@ import static com.lindb.rocks.util.Bytes.*;
 
 /**
  * Log related write/read. Using memory map file.
+ * Each record refer to chunk
  * Format:
  * |block1|block2|block3|..., each block size is BLOCK_SIZE
  * Block: |chunk header 1|chunk1|....

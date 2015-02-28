@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.lindb.rocks.FileName.FileInfo;
 import com.lindb.rocks.log.Log;
 import com.lindb.rocks.log.Log.Reader;
 import com.lindb.rocks.log.Log.Writer;
@@ -26,7 +27,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.lindb.rocks.DBConstants.*;
-import static com.lindb.rocks.table.SequenceNumber.MAX_SEQUENCE_NUMBER;
 import static com.lindb.rocks.table.ValueType.*;
 
 /**
@@ -107,21 +107,18 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
             }
 
             versions = new VersionSet(databasePath, tableCache, internalKeyComparator);
-            // load  (and recover) current version
+            // load and recover current version
             versions.recover();
-            // Recover from all newer log files than the ones named in the
-            // descriptor (new log files may have been added by the previous
-            // incarnation without registering them in the descriptor).
-            //
-            // Note that PrevLogNumber() is no longer used, but we pay
-            // attention to it in case we are recovering a database
-            // produced by an older version of leveldb.
+            /*
+             * Recover form all newer log files than the ones named in the descriptor(new log files may have been added by the previous incarnation without registering them in the descriptor).
+             * Note that previous log number is no longer used, but we pay attention to it in case we are recovering a database produced by an older version of racks db.
+             */
             long minLogNumber = versions.getLogNumber();
             long previousLogNumber = versions.getPrevLogNumber();
             List<File> fileNames = FileName.listFiles(databasePath);
             List<Long> logs = Lists.newArrayList();
             for (File filename : fileNames) {
-                FileName.FileInfo fileInfo = FileName.parseFileName(filename);
+                FileInfo fileInfo = FileName.parseFileName(filename);
                 if (fileInfo != null && fileInfo.getFileType() == FileName.FileType.LOG &&
                         ((fileInfo.getFileNumber() >= minLogNumber) || (fileInfo.getFileNumber() == previousLogNumber))) {
                     logs.add(fileInfo.getFileNumber());
@@ -213,7 +210,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
                     keep = ((number >= versions.getLogNumber()) ||
                             (number == versions.getPrevLogNumber()));
                     break;
-                case DESCRIPTOR:
+                case MANIFEST:
                     // Keep my manifest file, and any newer incarnations'
                     // (in case there is a race that allows other incarnations)
                     keep = (number >= versions.getManifestFileNumber());
@@ -435,30 +432,27 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
         }
     }
 
-    private long recoverLogFile(long fileNumber, VersionEdit edit)
-            throws IOException {
+    private long recoverLogFile(long fileNumber, VersionEdit edit) throws IOException {
         Preconditions.checkState(mutex.isHeldByCurrentThread());
         File file = new File(databasePath, FileName.logFileName(fileNumber));
         try (FileChannel channel = new FileInputStream(file).getChannel()) {
             Monitor logMonitor = Monitors.logMonitor();
             Reader logReader = new Reader(channel, logMonitor, true, 0);
 
-            // Log(options_.info_log, "Recovering log #%llu", (unsigned long long) log_number);
-
-            // Read all the records and add to a memtable
+            // Read all the records and add to a memory table
             long maxSequence = 0;
             MemTable memTable = null;
+            // Header(sequence number + record count)
             for (ByteBuffer record = logReader.readRecord(); record != null; record = logReader.readRecord()) {
                 // read header
                 if (record.remaining() < RECORD_HEADER_SIZE) {
-                    logMonitor.corruption(record.remaining(), "log record too small");
                     continue;
                 }
                 long sequenceBegin = record.getLong();
-                int updateSize = record.getInt();
+                int recordCount = record.getInt();
 
                 // read entries
-                WriteBatch writeBatch = readWriteBatch(record, updateSize);
+                WriteBatch writeBatch = readWriteBatch(record, recordCount);
 
                 // apply entries to memTable
                 if (memTable == null) {
@@ -467,7 +461,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
                 writeBatch.forEach(new InsertIntoHandler(memTable, sequenceBegin));
 
                 // update the maxSequence
-                long lastSequence = sequenceBegin + updateSize - 1;
+                long lastSequence = sequenceBegin + recordCount - 1;
                 if (lastSequence > maxSequence) {
                     maxSequence = lastSequence;
                 }
@@ -764,10 +758,9 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
         }
     }
 
-    private void compactMemTableInternal()
-            throws IOException {
+    private void compactMemTableInternal() throws IOException {
         Preconditions.checkState(mutex.isHeldByCurrentThread());
-        if (immutableMemTable == null) {
+        if (immutableMemTable == null || immutableMemTable.isEmpty()) {
             return;
         }
 
@@ -794,14 +787,8 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
         }
     }
 
-    private void writeLevel0Table(MemTable mem, VersionEdit edit, Version base)
-            throws IOException {
+    private void writeLevel0Table(MemTable mem, VersionEdit edit, Version base) throws IOException {
         Preconditions.checkState(mutex.isHeldByCurrentThread());
-
-        // skip empty mem table
-        if (mem.isEmpty()) {
-            return;
-        }
 
         // write the memory table to a new sstable
         long fileNumber = versions.getNextFileNumber();
@@ -815,8 +802,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
         }
         pendingOutputs.remove(fileNumber);
 
-        // Note that if file size is zero, the file has been deleted and
-        // should not be added to the manifest.
+        // Note that if file size is zero, the file has been deleted and should not be added to the manifest.
         int level = 0;
         if (meta != null && meta.getFileSize() > 0) {
             byte[] minUserKey = meta.getSmallest().getUserKey();
@@ -1092,8 +1078,7 @@ public class RacksDB implements Iterable<Map.Entry<byte[], byte[]>>, Closeable {
         return versions.getMaxNextLevelOverlappingBytes();
     }
 
-    private WriteBatch readWriteBatch(ByteBuffer record, int updateSize)
-            throws IOException {
+    private WriteBatch readWriteBatch(ByteBuffer record, int updateSize) throws IOException {
         WriteBatch writeBatch = new WriteBatch();
         int entries = 0;
         while (record.hasRemaining()) {

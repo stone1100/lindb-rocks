@@ -89,10 +89,7 @@ public class VersionEdit {
     // Add the specified file at the specified level.
     // REQUIRES: This version has not been saved (see VersionSet::SaveTo)
     // REQUIRES: "smallest" and "largest" are smallest and largest keys in file
-    public void addFile(int level, long fileNumber,
-                        long fileSize,
-                        InternalKey smallest,
-                        InternalKey largest) {
+    public void addFile(int level, long fileNumber, long fileSize, InternalKey smallest, InternalKey largest) {
         FileMetaData fileMetaData = new FileMetaData(fileNumber, fileSize, smallest, largest);
         addFile(level, fileMetaData);
     }

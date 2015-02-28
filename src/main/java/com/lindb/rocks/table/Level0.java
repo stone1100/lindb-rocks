@@ -2,6 +2,7 @@ package com.lindb.rocks.table;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.lindb.rocks.DBConstants;
 import com.lindb.rocks.LookupKey;
 import com.lindb.rocks.LookupResult;
 import com.lindb.rocks.util.Bytes;
@@ -98,12 +99,11 @@ public class Level0 implements SeekingIterable<InternalKey, byte[]> {
     }
 
     public boolean someFileOverlapsRange(byte[] smallestUserKey, byte[] largestUserKey) {
-        InternalKey smallestInternalKey = new InternalKey(smallestUserKey, SequenceNumber.MAX_SEQUENCE_NUMBER, ValueType.VALUE);
+        InternalKey smallestInternalKey = new InternalKey(smallestUserKey, DBConstants.MAX_SEQUENCE_NUMBER, ValueType.VALUE);
         int index = findFile(smallestInternalKey);
 
         UserComparator userComparator = internalKeyComparator.getUserComparator();
-        return ((index < files.size()) &&
-                userComparator.compare(largestUserKey, files.get(index).getSmallest().getUserKey()) >= 0);
+        return ((index < files.size()) && userComparator.compare(largestUserKey, files.get(index).getSmallest().getUserKey()) >= 0);
     }
 
     private int findFile(InternalKey targetKey) {
@@ -111,7 +111,6 @@ public class Level0 implements SeekingIterable<InternalKey, byte[]> {
             return files.size();
         }
 
-        // todo replace with Collections.binarySearch
         int left = 0;
         int right = files.size() - 1;
 
@@ -120,12 +119,10 @@ public class Level0 implements SeekingIterable<InternalKey, byte[]> {
             int mid = (left + right) / 2;
 
             if (internalKeyComparator.compare(files.get(mid).getLargest(), targetKey) < 0) {
-                // Key at "mid.largest" is < "target".  Therefore all
-                // files at or before "mid" are uninteresting.
+                // Key at "mid.largest" is < "target".  Therefore all files at or before "mid" are uninteresting.
                 left = mid + 1;
             } else {
-                // Key at "mid.largest" is >= "target".  Therefore all files
-                // after "mid" are uninteresting.
+                // Key at "mid.largest" is >= "target".  Therefore all files after "mid" are uninteresting.
                 right = mid;
             }
         }

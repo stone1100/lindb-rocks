@@ -31,8 +31,7 @@ import static com.google.common.collect.Lists.newArrayListWithCapacity;
  */
 public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
     private static final int L0_COMPACTION_TRIGGER = 4;
-
-    public static final int TARGET_FILE_SIZE = 2 * 1048576;
+    public static final int TARGET_FILE_SIZE = 2 * 1024 * 1024;//2MB
 
     // Maximum bytes of overlaps in grandparent (i.e., level+2) before we
     // stop building a single file in a level.level+1 compaction.
@@ -53,8 +52,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
     private Writer descriptorLog;
     private final Map<Integer, InternalKey> compactPointers = Maps.newTreeMap();
 
-    public VersionSet(File databaseDir, TableCache tableCache, InternalKeyComparator internalKeyComparator)
-            throws IOException {
+    public VersionSet(File databaseDir, TableCache tableCache, InternalKeyComparator internalKeyComparator) throws IOException {
         this.databaseDir = databaseDir;
         this.tableCache = tableCache;
         this.internalKeyComparator = internalKeyComparator;
@@ -63,8 +61,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
         initializeIfNeeded();
     }
 
-    private void initializeIfNeeded()
-            throws IOException {
+    private void initializeIfNeeded() throws IOException {
         File currentFile = new File(databaseDir, FileName.currentFileName());
 
         if (!currentFile.exists()) {
@@ -74,7 +71,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
             edit.setNextFileNumber(nextFileNumber.get());
             edit.setLastSequenceNumber(lastSequence);
 
-            Writer log = Log.createWriter(new File(databaseDir, FileName.descriptorFileName(manifestFileNumber)), manifestFileNumber);
+            Writer log = Log.createWriter(new File(databaseDir, FileName.manifestFileName(manifestFileNumber)), manifestFileNumber);
             try {
                 writeSnapshot(log);
                 log.addRecord(edit.encode(), false);
@@ -98,10 +95,6 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
             current = null;
             t.release();
         }
-
-        Set<Version> versions = activeVersions.keySet();
-        // TODO:
-        // log("DB closed with "+versions.size()+" open snapshots. This could mean your application has a resource leak.");
     }
 
     private void appendVersion(Version version) {
@@ -199,8 +192,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
         this.lastSequence = newLastSequence;
     }
 
-    public void logAndApply(VersionEdit edit)
-            throws IOException {
+    public void logAndApply(VersionEdit edit) throws IOException {
         if (edit.getLogNumber() != null) {
             Preconditions.checkArgument(edit.getLogNumber() >= logNumber);
             Preconditions.checkArgument(edit.getLogNumber() < nextFileNumber.get());
@@ -228,7 +220,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
             // a temporary file that contains a snapshot of the current version.
             if (descriptorLog == null) {
                 edit.setNextFileNumber(nextFileNumber.get());
-                descriptorLog = Log.createWriter(new File(databaseDir, FileName.descriptorFileName(manifestFileNumber)), manifestFileNumber);
+                descriptorLog = Log.createWriter(new File(databaseDir, FileName.manifestFileName(manifestFileNumber)), manifestFileNumber);
                 writeSnapshot(descriptorLog);
                 createdNewManifest = true;
             }
@@ -259,8 +251,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
         prevLogNumber = edit.getPreviousLogNumber();
     }
 
-    private void writeSnapshot(Writer log)
-            throws IOException {
+    private void writeSnapshot(Writer log) throws IOException {
         // Save metadata
         VersionEdit edit = new VersionEdit();
         edit.setComparatorName(internalKeyComparator.name());
@@ -301,7 +292,6 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
                 VersionEdit edit = new VersionEdit(record);
 
                 // verify comparator
-                // todo implement user comparator
                 String editComparator = edit.getComparatorName();
                 String userComparator = internalKeyComparator.name();
                 Preconditions.checkArgument(editComparator == null || editComparator.equals(userComparator),
@@ -629,9 +619,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
         public void apply(VersionEdit edit) {
             // Update compaction pointers
             for (Map.Entry<Integer, InternalKey> entry : edit.getCompactPointers().entrySet()) {
-                Integer level = entry.getKey();
-                InternalKey internalKey = entry.getValue();
-                versionSet.compactPointers.put(level, internalKey);
+                versionSet.compactPointers.put(entry.getKey(), entry.getValue());
             }
 
             // Delete files
@@ -639,7 +627,6 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
                 Integer level = entry.getKey();
                 Long fileNumber = entry.getValue();
                 levels.get(level).deletedFiles.add(fileNumber);
-                // todo missing update to addedFiles?
             }
 
             // Add new files
@@ -647,20 +634,19 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
                 Integer level = entry.getKey();
                 FileMetaData fileMetaData = entry.getValue();
 
-                // We arrange to automatically compact this file after
-                // a certain number of seeks.  Let's assume:
-                //   (1) One seek costs 10ms
-                //   (2) Writing or reading 1MB costs 10ms (100MB/s)
-                //   (3) A compaction of 1MB does 25MB of IO:
-                //         1MB read from this level
-                //         10-12MB read from next level (boundaries may be misaligned)
-                //         10-12MB written to next level
-                // This implies that 25 seeks cost the same as the compaction
-                // of 1MB of data.  I.e., one seek costs approximately the
-                // same as the compaction of 40KB of data.  We are a little
-                // conservative and allow approximately one seek for every 16KB
-                // of data before triggering a compaction.
-                int allowedSeeks = (int) (fileMetaData.getFileSize() / 16384);
+                /* We arrange to automatically compact this file after a certain number of seeks.
+                 * Let's assume:
+                 * (1) One seek costs 10ms
+                 * (2) Writing or reading 1MB costs 10ms (100MS/s)
+                 * (3) A compaction of 1MB does 25MB of IO:
+                 *       1MB read from this level
+                 *       10-12MB read from next level (boundaries may be misaligned)
+                 *       10-12MB written to next level
+                 * This implies that 25 seeks cost the same as the compaction of 1MB of data.
+                 * I.e., one seek costs approximately the same as the compaction of 40KB of data.
+                 * We are a little conservative and allow approximately one seek for every 16KB of data before triggering a compaction.
+                 */
+                int allowedSeeks = (int) (fileMetaData.getFileSize() / DBConstants.ALLOW_SEEK_SIZE);
                 if (allowedSeeks < 100) {
                     allowedSeeks = 100;
                 }
@@ -674,8 +660,7 @@ public class VersionSet implements SeekingIterable<InternalKey, byte[]> {
         /**
          * Saves the current state in specified version.
          */
-        public void saveTo(Version version)
-                throws IOException {
+        public void saveTo(Version version) throws IOException {
             FileMetaDataBySmallestKey cmp = new FileMetaDataBySmallestKey(versionSet.internalKeyComparator);
             for (int level = 0; level < baseVersion.numberOfLevels(); level++) {
                 // Merge the set of added files with the set of pre-existing files.

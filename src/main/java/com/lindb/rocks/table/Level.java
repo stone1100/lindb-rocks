@@ -2,6 +2,7 @@ package com.lindb.rocks.table;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.lindb.rocks.DBConstants;
 import com.lindb.rocks.LookupKey;
 import com.lindb.rocks.LookupResult;
 import com.lindb.rocks.util.Bytes;
@@ -129,7 +130,7 @@ public class Level implements SeekingIterable<InternalKey, byte[]> {
     }
 
     public boolean someFileOverlapsRange(byte[] smallestUserKey, byte[] largestUserKey) {
-        InternalKey smallestInternalKey = new InternalKey(smallestUserKey, SequenceNumber.MAX_SEQUENCE_NUMBER, ValueType.VALUE);
+        InternalKey smallestInternalKey = new InternalKey(smallestUserKey, DBConstants.MAX_SEQUENCE_NUMBER, ValueType.VALUE);
         int index = findFile(smallestInternalKey);
 
         UserComparator userComparator = internalKeyComparator.getUserComparator();

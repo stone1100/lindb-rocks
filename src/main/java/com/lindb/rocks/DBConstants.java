@@ -2,15 +2,18 @@ package com.lindb.rocks;
 
 import com.lindb.rocks.util.Bytes;
 
-public final class DBConstants {
+public interface DBConstants {
     /**
      * An empty instance.
      */
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
     //Record header is sequence number(8 bytes) + record count(4b bytes)
     public static final int RECORD_HEADER_SIZE = Bytes.SIZEOF_LONG + Bytes.SIZEOF_INT;
+    // We leave eight bits empty at the bottom so a type and sequence# can be packed together into 64-bits.
+    public static final long MAX_SEQUENCE_NUMBER = ((0x1L << 56) - 1);
     public static final int MAJOR_VERSION = 0;
     public static final int MINOR_VERSION = 1;
+    public static final int ALLOW_SEEK_SIZE = 16 * 1024;//16KB
 
     // todo this should be part of the configuration
 
@@ -43,7 +46,4 @@ public final class DBConstants {
      * space if the same key space is being repeatedly overwritten.
      */
     public static final int MAX_MEM_COMPACT_LEVEL = 2;
-
-    private DBConstants() {
-    }
 }

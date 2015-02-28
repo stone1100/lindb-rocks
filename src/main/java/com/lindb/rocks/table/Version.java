@@ -31,8 +31,6 @@ public class Version implements SeekingIterable<InternalKey, byte[]> {
 
     public Version(VersionSet versionSet) {
         this.versionSet = versionSet;
-        Preconditions.checkArgument(DBConstants.NUM_LEVELS > 1, "levels must be at least 2");
-
         this.level0 = new Level0(Lists.<FileMetaData>newArrayList(), getTableCache(), getInternalKeyComparator());
 
         Builder<Level> builder = ImmutableList.builder();
@@ -41,7 +39,6 @@ public class Version implements SeekingIterable<InternalKey, byte[]> {
             builder.add(new Level(i, files, getTableCache(), getInternalKeyComparator()));
         }
         this.levels = builder.build();
-
     }
 
     public void assertNoOverlappingFiles() {
@@ -142,9 +139,8 @@ public class Version implements SeekingIterable<InternalKey, byte[]> {
     public int pickLevelForMemTableOutput(byte[] smallestUserKey, byte[] largestUserKey) {
         int level = 0;
         if (!overlapInLevel(0, smallestUserKey, largestUserKey)) {
-            // Push to next level if there is no overlap in next level,
-            // and the #bytes overlapping in the level after that are limited.
-            InternalKey start = new InternalKey(smallestUserKey, SequenceNumber.MAX_SEQUENCE_NUMBER, ValueType.VALUE);
+            // Push to next level if there is no overlap in next level and the #bytes overlapping in the level after that are limited.
+            InternalKey start = new InternalKey(smallestUserKey, DBConstants.MAX_SEQUENCE_NUMBER, ValueType.VALUE);
             InternalKey limit = new InternalKey(largestUserKey, 0, ValueType.VALUE);
             while (level < DBConstants.MAX_MEM_COMPACT_LEVEL) {
                 if (overlapInLevel(level + 1, smallestUserKey, largestUserKey)) {
